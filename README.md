@@ -10,6 +10,7 @@ Express + SQLite implementation of a two-agent pipeline:
 - Job ad textbox
 - Sample cover letter textbox
 - Resume upload field (`.doc`/`.docx`, currently selection only)
+- Personal information textbox with Save/Clear (persisted in browser localStorage)
 - `Extract Job JSON` button (calls `/api/extract-job`)
 - `Generate Tailored Letter` button (calls `/api/generate-letter`)
 - Stores extractions and generated letters in `data/job-hunt.db`

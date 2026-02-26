@@ -8,7 +8,7 @@
     <style>
       body { background: #f6f8fb; }
       .card { border: 0; border-radius: 1rem; }
-      textarea { min-height: 320px; resize: vertical; }
+      textarea { min-height: 240px; resize: vertical; }
       .upload-box {
         border: 2px dashed #0d6efd;
         border-radius: 0.9rem;
@@ -55,6 +55,21 @@
         <div class="col-lg-6">
           <div class="card shadow-sm h-100">
             <div class="card-body">
+              <h5 class="card-title">Personal Information (persistent)</h5>
+              <label for="personalInfo" class="form-label text-secondary small">This is saved in your browser and reused on reload.</label>
+              <textarea id="personalInfo" class="form-control" placeholder="Paste your personal info, strengths, certifications, experience highlights..."></textarea>
+              <div class="d-flex gap-2 mt-3">
+                <button id="savePersonalBtn" class="btn btn-success btn-sm">Save</button>
+                <button id="clearPersonalBtn" class="btn btn-outline-danger btn-sm">Clear</button>
+              </div>
+              <p id="personalStatus" class="small text-secondary mt-2 mb-0">No saved personal info yet.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-lg-6">
+          <div class="card shadow-sm h-100">
+            <div class="card-body">
               <h5 class="card-title">Upload Resume (Word)</h5>
               <div class="upload-box">
                 <label for="resumeUpload" class="form-label fw-semibold">Select resume file (.doc, .docx)</label>
@@ -70,8 +85,10 @@
             </div>
           </div>
         </div>
+      </div>
 
-        <div class="col-lg-6">
+      <div class="row mt-4 g-4">
+        <div class="col-12">
           <div class="card shadow-sm h-100">
             <div class="card-body">
               <h5 class="card-title">Agent Controls</h5>
@@ -107,10 +124,17 @@
     </main>
 
     <script>
+      const PERSONAL_INFO_KEY = 'job-hunt-personal-info-v1'
+
       const uploadInput = document.getElementById('resumeUpload')
       const fileStatus = document.getElementById('fileStatus')
       const extractBtn = document.getElementById('extractBtn')
       const generateBtn = document.getElementById('generateBtn')
+      const savePersonalBtn = document.getElementById('savePersonalBtn')
+      const clearPersonalBtn = document.getElementById('clearPersonalBtn')
+      const personalInfoInput = document.getElementById('personalInfo')
+      const personalStatus = document.getElementById('personalStatus')
+
       const jobAdInput = document.getElementById('jobAd')
       const sampleLetterInput = document.getElementById('sampleLetter')
       const jsonOutput = document.getElementById('jsonOutput')
@@ -118,6 +142,28 @@
       const statusEl = document.getElementById('status')
 
       let latestExtractionId = null
+
+      function loadPersonalInfo() {
+        const saved = localStorage.getItem(PERSONAL_INFO_KEY)
+        if (saved) {
+          personalInfoInput.value = saved
+          personalStatus.textContent = 'Loaded saved personal info from browser storage.'
+          personalStatus.className = 'small text-success mt-2 mb-0'
+        }
+      }
+
+      savePersonalBtn.addEventListener('click', () => {
+        localStorage.setItem(PERSONAL_INFO_KEY, personalInfoInput.value || '')
+        personalStatus.textContent = 'Personal info saved.'
+        personalStatus.className = 'small text-success mt-2 mb-0'
+      })
+
+      clearPersonalBtn.addEventListener('click', () => {
+        localStorage.removeItem(PERSONAL_INFO_KEY)
+        personalInfoInput.value = ''
+        personalStatus.textContent = 'Personal info cleared.'
+        personalStatus.className = 'small text-danger mt-2 mb-0'
+      })
 
       uploadInput.addEventListener('change', (e) => {
         const file = e.target.files?.[0]
@@ -149,7 +195,7 @@
           latestExtractionId = data.extractionId
           jsonOutput.textContent = JSON.stringify(data.extraction, null, 2)
           statusEl.className = 'small text-success mt-3'
-          statusEl.textContent = `Agent A complete. extractionId=${latestExtractionId}`
+          statusEl.textContent = `Agent A complete (${data.mode}). extractionId=${latestExtractionId}`
         } catch (err) {
           statusEl.className = 'small text-danger mt-3'
           statusEl.textContent = `Extraction error: ${err.message}`
@@ -158,6 +204,8 @@
 
       generateBtn.addEventListener('click', async () => {
         const sampleCoverLetter = sampleLetterInput.value.trim()
+        const personalInfo = personalInfoInput.value.trim()
+
         if (!latestExtractionId) {
           statusEl.className = 'small text-danger mt-3'
           statusEl.textContent = 'Run Agent A first (extract job JSON).'
@@ -180,6 +228,7 @@
               extractionId: latestExtractionId,
               sampleCoverLetter,
               yourName: '[MY NAME]',
+              personalInfo,
             }),
           })
           const data = await resp.json()
@@ -187,12 +236,14 @@
 
           tailoredOutput.textContent = data.coverLetter
           statusEl.className = 'small text-success mt-3'
-          statusEl.textContent = `Agent B complete. letterId=${data.letterId}`
+          statusEl.textContent = `Agent B complete (${data.mode}). letterId=${data.letterId}`
         } catch (err) {
           statusEl.className = 'small text-danger mt-3'
           statusEl.textContent = `Generation error: ${err.message}`
         }
       })
+
+      loadPersonalInfo()
     </script>
   </body>
 </html>

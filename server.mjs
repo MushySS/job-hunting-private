@@ -153,7 +153,7 @@ async function llmExtraction(jobAd) {
   return extractJsonFromText(content)
 }
 
-async function llmCoverLetter({ extraction, sampleCoverLetter, yourName }) {
+async function llmCoverLetter({ extraction, sampleCoverLetter, yourName, personalInfo }) {
   const prompt = `You are Agent B for cover letter tailoring.
 Create a concise professional cover letter for L1 Helpdesk/Service Desk style roles.
 Keep claims truthful and align to ATS keywords.
@@ -164,6 +164,9 @@ Extraction JSON:\n${JSON.stringify(extraction, null, 2)}
 Base letter:\n${sampleCoverLetter}
 
 Candidate name: ${yourName}
+
+Personal information to incorporate (if provided):
+${personalInfo || 'N/A'}
 
 Return only the final cover letter text.`
 
@@ -220,7 +223,7 @@ app.post('/api/extract-job', async (req, res) => {
 // Agent B: Cover-letter generator
 app.post('/api/generate-letter', async (req, res) => {
   try {
-    const { extractionId, sampleCoverLetter, yourName = '[MY NAME]' } = req.body || {}
+    const { extractionId, sampleCoverLetter, yourName = '[MY NAME]', personalInfo = '' } = req.body || {}
 
     if (!extractionId || !sampleCoverLetter) {
       return res.status(400).json({ error: 'extractionId and sampleCoverLetter are required' })
@@ -246,7 +249,7 @@ app.post('/api/generate-letter', async (req, res) => {
 
     let letter
     if (useLLM()) {
-      letter = await llmCoverLetter({ extraction, sampleCoverLetter, yourName })
+      letter = await llmCoverLetter({ extraction, sampleCoverLetter, yourName, personalInfo })
     } else {
       const company = extraction.company || '[COMPANY NAME]'
       const role = extraction.role_title || 'Level 1 IT Support Technician'
@@ -257,10 +260,13 @@ app.post('/api/generate-letter', async (req, res) => {
         .replaceAll('[MY NAME]', yourName)
         .replace(/Level 1 IT Support Technician/gi, role)
 
+      const personalLine = personalInfo
+        ? `\n\nAdditional candidate context: ${personalInfo}`
+        : ''
       const atsLine = keywords.length
         ? `\n\nI am well prepared to contribute in areas such as ${keywords.slice(0, 8).join(', ')}, while maintaining strong customer service and structured service desk practices.`
         : ''
-      letter += atsLine
+      letter += personalLine + atsLine
     }
 
     const save = db.prepare(`
