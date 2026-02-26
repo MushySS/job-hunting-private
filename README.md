@@ -10,5 +10,9 @@ Basic frontend website for job application prep.
 ## Run
 Open `index.html` in a browser.
 
+## Deploy (GitHub Pages)
+This repo includes `.github/workflows/deploy-pages.yml`.
+Any push to `main` triggers automatic deploy to GitHub Pages.
+
 ## Notes
 This is frontend-only for now; uploaded files are not sent anywhere unless a backend is added later.
