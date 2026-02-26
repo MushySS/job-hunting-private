@@ -82,7 +82,9 @@ Task: rewrite and optimize the candidate resume for the provided job ad.
 IMPORTANT: keep the SAME high-level section order as this array: ${JSON.stringify(sectionOrder)}.
 Do not fabricate experience. Improve wording, ATS alignment, and impact.
 
-Output ONLY markdown.
+Output ONLY markdown resume content.
+Do NOT wrap your output in code fences.
+Do NOT include lines like \`\`\`markdown or \`\`\`.
 
 JOB AD:
 ${latestJob.source_job_ad}
@@ -94,10 +96,16 @@ WEB REFERENCES:
 ${JSON.stringify(webResults, null, 2)}
 `
 
-const optimized = await callOpenAI([
+let optimized = await callOpenAI([
   { role: 'system', content: 'You optimize resumes for ATS and recruiter readability.' },
   { role: 'user', content: prompt },
 ], 0.25)
+
+// Safety cleanup in case model still returns fenced markdown
+optimized = optimized
+  .replace(/^```[a-zA-Z]*\s*\n?/m, '')
+  .replace(/\n?```\s*$/m, '')
+  .trim()
 
 const outDir = path.resolve('output')
 fs.mkdirSync(outDir, { recursive: true })

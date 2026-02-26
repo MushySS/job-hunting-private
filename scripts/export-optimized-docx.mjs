@@ -19,7 +19,7 @@ function mdToParagraphs(md) {
   return md
     .split(/\r?\n/)
     .map((l) => l.trim())
-    .filter(Boolean)
+    .filter((line) => line && !/^```/.test(line))
     .map((line) => line
       .replace(/^#{1,6}\s+/, '')
       .replace(/^[-*+]\s+/, '• ')
