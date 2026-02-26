@@ -1,6 +1,6 @@
-# Job Hunt Portal (Phase 2)
+# Job Hunt Portal (Phase 3)
 
-Express + SQLite implementation of a two-agent pipeline:
+Express + SQLite implementation of a two-agent pipeline + resume parsing:
 
 1. **Agent A** — Extract job ad into structured JSON and store in SQLite
 2. **Agent B** — Generate tailored cover letter using extracted JSON + sample cover letter
@@ -9,7 +9,7 @@ Express + SQLite implementation of a two-agent pipeline:
 
 - Job ad textbox
 - Sample cover letter textbox
-- Resume upload field (`.doc`/`.docx`, currently selection only)
+- Resume upload + parse (`.docx` recommended) via `mammoth`
 - Personal information textbox with Save/Clear (persisted in browser localStorage)
 - `Extract Job JSON` button (calls `/api/extract-job`)
 - `Generate Tailored Letter` button (calls `/api/generate-letter`)
@@ -44,10 +44,12 @@ curl http://localhost:3000/api/health
 
 ## API endpoints
 
+- `POST /api/parse-resume`
+  - multipart/form-data field: `resume` (prefer `.docx`)
 - `POST /api/extract-job`
   - body: `{ "jobAd": "..." }`
 - `POST /api/generate-letter`
-  - body: `{ "extractionId": 1, "sampleCoverLetter": "...", "yourName": "Your Name" }`
+  - body: `{ "extractionId": 1, "sampleCoverLetter": "...", "yourName": "Your Name", "personalInfo": "...", "resumeParsed": { ... } }`
 - `GET /api/extractions`
 
 ## Deployment note

@@ -81,7 +81,10 @@
                 />
                 <p id="fileStatus" class="mt-2 text-secondary small mb-0">No file selected.</p>
               </div>
-              <p class="text-secondary small mt-3 mb-0">Resume upload is currently stored in browser context only (parser integration is next phase).</p>
+              <div class="d-flex gap-2 mt-3">
+                <button id="parseResumeBtn" class="btn btn-outline-secondary btn-sm">Parse Resume (Phase 3)</button>
+              </div>
+              <p class="text-secondary small mt-3 mb-0">Tip: .docx works best for extraction.</p>
             </div>
           </div>
         </div>
@@ -121,6 +124,17 @@
           </div>
         </div>
       </div>
+
+      <div class="row mt-4">
+        <div class="col-12">
+          <div class="card shadow-sm">
+            <div class="card-body">
+              <h5 class="card-title">Parsed Resume JSON</h5>
+              <pre id="resumeOutput" class="form-control"></pre>
+            </div>
+          </div>
+        </div>
+      </div>
     </main>
 
     <script>
@@ -130,6 +144,7 @@
       const fileStatus = document.getElementById('fileStatus')
       const extractBtn = document.getElementById('extractBtn')
       const generateBtn = document.getElementById('generateBtn')
+      const parseResumeBtn = document.getElementById('parseResumeBtn')
       const savePersonalBtn = document.getElementById('savePersonalBtn')
       const clearPersonalBtn = document.getElementById('clearPersonalBtn')
       const personalInfoInput = document.getElementById('personalInfo')
@@ -139,9 +154,11 @@
       const sampleLetterInput = document.getElementById('sampleLetter')
       const jsonOutput = document.getElementById('jsonOutput')
       const tailoredOutput = document.getElementById('tailoredOutput')
+      const resumeOutput = document.getElementById('resumeOutput')
       const statusEl = document.getElementById('status')
 
       let latestExtractionId = null
+      let parsedResumeData = null
 
       function loadPersonalInfo() {
         const saved = localStorage.getItem(PERSONAL_INFO_KEY)
@@ -170,6 +187,38 @@
         fileStatus.textContent = file
           ? `Selected: ${file.name} (${Math.round(file.size / 1024)} KB)`
           : 'No file selected.'
+      })
+
+      parseResumeBtn.addEventListener('click', async () => {
+        const file = uploadInput.files?.[0]
+        if (!file) {
+          statusEl.className = 'small text-danger mt-3'
+          statusEl.textContent = 'Please upload a .docx resume first.'
+          return
+        }
+
+        statusEl.className = 'small text-secondary mt-3'
+        statusEl.textContent = 'Parsing resume...'
+
+        try {
+          const form = new FormData()
+          form.append('resume', file)
+
+          const resp = await fetch('/api/parse-resume', {
+            method: 'POST',
+            body: form,
+          })
+          const data = await resp.json()
+          if (!resp.ok) throw new Error(data.error || 'Resume parse failed')
+
+          parsedResumeData = data.parsed
+          resumeOutput.textContent = JSON.stringify(data.parsed, null, 2)
+          statusEl.className = 'small text-success mt-3'
+          statusEl.textContent = `Resume parsed: ${data.filename}`
+        } catch (err) {
+          statusEl.className = 'small text-danger mt-3'
+          statusEl.textContent = `Resume parse error: ${err.message}`
+        }
       })
 
       extractBtn.addEventListener('click', async () => {
@@ -229,6 +278,7 @@
               sampleCoverLetter,
               yourName: '[MY NAME]',
               personalInfo,
+              resumeParsed: parsedResumeData,
             }),
           })
           const data = await resp.json()

@@ -9,6 +9,8 @@
     "db:init": "node scripts/init-db.mjs"
   },
   "dependencies": {
-    "express": "^4.21.2"
+    "express": "^4.21.2",
+    "mammoth": "^1.11.0",
+    "multer": "^2.0.2"
   }
 }

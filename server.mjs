@@ -1,6 +1,8 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import express from 'express'
+import multer from 'multer'
+import mammoth from 'mammoth'
 import { DatabaseSync } from 'node:sqlite'
 
 const app = express()
@@ -13,6 +15,11 @@ const LLM_MODE = (process.env.LLM_MODE || 'false').toLowerCase() === 'true'
 const dataDir = path.resolve('data')
 const dbPath = path.resolve('data/job-hunt.db')
 fs.mkdirSync(dataDir, { recursive: true })
+
+const uploadsDir = path.resolve('data/uploads')
+fs.mkdirSync(uploadsDir, { recursive: true })
+
+const upload = multer({ dest: uploadsDir })
 
 const db = new DatabaseSync(dbPath)
 
@@ -153,7 +160,7 @@ async function llmExtraction(jobAd) {
   return extractJsonFromText(content)
 }
 
-async function llmCoverLetter({ extraction, sampleCoverLetter, yourName, personalInfo }) {
+async function llmCoverLetter({ extraction, sampleCoverLetter, yourName, personalInfo, resumeParsed }) {
   const prompt = `You are Agent B for cover letter tailoring.
 Create a concise professional cover letter for L1 Helpdesk/Service Desk style roles.
 Keep claims truthful and align to ATS keywords.
@@ -168,6 +175,9 @@ Candidate name: ${yourName}
 Personal information to incorporate (if provided):
 ${personalInfo || 'N/A'}
 
+Parsed resume data to incorporate (if provided):
+${resumeParsed ? JSON.stringify(resumeParsed, null, 2) : 'N/A'}
+
 Return only the final cover letter text.`
 
   return callOpenAI([
@@ -179,6 +189,57 @@ Return only the final cover letter text.`
 function useLLM() {
   return LLM_MODE && Boolean(OPENAI_API_KEY)
 }
+
+function parseResumeSections(rawText) {
+  const lines = rawText.split(/\r?\n/).map((l) => l.trim()).filter(Boolean)
+  const text = lines.join('\n')
+
+  const email = text.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0] || ''
+  const phone = text.match(/(\+?\d[\d\s()-]{7,}\d)/)?.[0] || ''
+  const name = lines[0] || ''
+
+  const lower = lines.map((l) => l.toLowerCase())
+  const skills = lines.filter((l, i) => /skills|technical skills|core skills/.test(lower[i]))
+
+  const certifications = lines.filter((l) => /(certification|certified|az-900|az-104|comptia|itil)/i.test(l))
+
+  return {
+    name,
+    email,
+    phone,
+    highlights: lines.slice(0, 12),
+    skills_detected: skills,
+    certifications,
+    raw_excerpt: rawText.slice(0, 4000),
+  }
+}
+
+// Phase 3: Resume parser (.docx recommended)
+app.post('/api/parse-resume', upload.single('resume'), async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: 'resume file is required (field name: resume)' })
+
+    const originalName = req.file.originalname || ''
+    const ext = path.extname(originalName).toLowerCase()
+
+    if (ext === '.doc') {
+      return res.status(400).json({
+        error: 'Legacy .doc parsing is not supported reliably. Please save as .docx and upload again.',
+      })
+    }
+
+    const { value } = await mammoth.extractRawText({ path: req.file.path })
+    const parsed = parseResumeSections(value || '')
+
+    return res.json({
+      ok: true,
+      filename: originalName,
+      parsed,
+    })
+  } catch (err) {
+    return res.status(500).json({ error: err.message })
+  }
+})
 
 // Agent A: Extractor
 app.post('/api/extract-job', async (req, res) => {
@@ -223,7 +284,7 @@ app.post('/api/extract-job', async (req, res) => {
 // Agent B: Cover-letter generator
 app.post('/api/generate-letter', async (req, res) => {
   try {
-    const { extractionId, sampleCoverLetter, yourName = '[MY NAME]', personalInfo = '' } = req.body || {}
+    const { extractionId, sampleCoverLetter, yourName = '[MY NAME]', personalInfo = '', resumeParsed = null } = req.body || {}
 
     if (!extractionId || !sampleCoverLetter) {
       return res.status(400).json({ error: 'extractionId and sampleCoverLetter are required' })
@@ -249,7 +310,7 @@ app.post('/api/generate-letter', async (req, res) => {
 
     let letter
     if (useLLM()) {
-      letter = await llmCoverLetter({ extraction, sampleCoverLetter, yourName, personalInfo })
+      letter = await llmCoverLetter({ extraction, sampleCoverLetter, yourName, personalInfo, resumeParsed })
     } else {
       const company = extraction.company || '[COMPANY NAME]'
       const role = extraction.role_title || 'Level 1 IT Support Technician'
@@ -263,10 +324,13 @@ app.post('/api/generate-letter', async (req, res) => {
       const personalLine = personalInfo
         ? `\n\nAdditional candidate context: ${personalInfo}`
         : ''
+      const resumeLine = resumeParsed
+        ? `\n\nResume highlights to align with this role: ${JSON.stringify(resumeParsed).slice(0, 700)}`
+        : ''
       const atsLine = keywords.length
         ? `\n\nI am well prepared to contribute in areas such as ${keywords.slice(0, 8).join(', ')}, while maintaining strong customer service and structured service desk practices.`
         : ''
-      letter += personalLine + atsLine
+      letter += personalLine + resumeLine + atsLine
     }
 
     const save = db.prepare(`
