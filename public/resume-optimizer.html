@@ -25,8 +25,13 @@
         <div class="col-lg-6">
           <div class="card border-0 shadow-sm">
             <div class="card-body">
-              <label class="form-label">Personal Info</label>
+              <label class="form-label">Personal Info (synced with main page)</label>
               <textarea id="personalInfo" class="form-control" rows="10" placeholder="Paste your current personal info snippets..."></textarea>
+              <div class="d-flex gap-2 mt-2">
+                <button id="savePersonalBtn" class="btn btn-success btn-sm">Save</button>
+                <button id="clearPersonalBtn" class="btn btn-outline-danger btn-sm">Clear</button>
+              </div>
+              <div id="personalStatus" class="small text-secondary mt-2">Personal info sync ready.</div>
               <label class="form-label mt-3">Resume (.docx)</label>
               <input id="resumeUpload" class="form-control" type="file" accept=".doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" />
             </div>
@@ -61,8 +66,13 @@
     </main>
 
     <script>
+      const PERSONAL_INFO_KEY = 'job-hunt-personal-info-v1'
+
       const parseBtn = document.getElementById('parseBtn')
       const optimizeBtn = document.getElementById('optimizeBtn')
+      const savePersonalBtn = document.getElementById('savePersonalBtn')
+      const clearPersonalBtn = document.getElementById('clearPersonalBtn')
+      const personalStatus = document.getElementById('personalStatus')
       const upload = document.getElementById('resumeUpload')
       const jobAdEl = document.getElementById('jobAd')
       const personalInfoEl = document.getElementById('personalInfo')
@@ -71,6 +81,28 @@
       const statusEl = document.getElementById('status')
 
       let parsedResume = null
+
+      function loadPersonalInfo() {
+        const saved = localStorage.getItem(PERSONAL_INFO_KEY)
+        if (saved) {
+          personalInfoEl.value = saved
+          personalStatus.textContent = 'Loaded synced personal info from browser storage.'
+          personalStatus.className = 'small text-success mt-2'
+        }
+      }
+
+      savePersonalBtn.addEventListener('click', () => {
+        localStorage.setItem(PERSONAL_INFO_KEY, personalInfoEl.value || '')
+        personalStatus.textContent = 'Personal info saved and synced.'
+        personalStatus.className = 'small text-success mt-2'
+      })
+
+      clearPersonalBtn.addEventListener('click', () => {
+        localStorage.removeItem(PERSONAL_INFO_KEY)
+        personalInfoEl.value = ''
+        personalStatus.textContent = 'Personal info cleared from sync storage.'
+        personalStatus.className = 'small text-danger mt-2'
+      })
 
       parseBtn.addEventListener('click', async () => {
         const f = upload.files?.[0]
@@ -123,6 +155,9 @@
           optOut.textContent = JSON.stringify(j, null, 2)
           if (Array.isArray(j.improvedPersonalInfoSnippets) && j.improvedPersonalInfoSnippets.length) {
             personalInfoEl.value = j.improvedPersonalInfoSnippets.map((s) => `- ${s}`).join('\n')
+            localStorage.setItem(PERSONAL_INFO_KEY, personalInfoEl.value)
+            personalStatus.textContent = 'Updated personal info from optimizer and synced.'
+            personalStatus.className = 'small text-success mt-2'
           }
           statusEl.textContent = `Optimization complete (${j.mode}).`
           statusEl.className = 'small text-success'
@@ -131,6 +166,8 @@
           statusEl.className = 'small text-danger'
         }
       })
+
+      loadPersonalInfo()
     </script>
   </body>
 </html>
