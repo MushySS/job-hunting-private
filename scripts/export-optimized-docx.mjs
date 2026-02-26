@@ -54,21 +54,33 @@ function parseMdSections(md) {
   return sections
 }
 
-function isLikelyHeading(text, styleId = '', hasList = false) {
+const STRICT_MODE = (process.env.STRICT_MODE || 'true').toLowerCase() === 'true'
+const PROTECTED_HEADINGS = (process.env.PROTECTED_HEADINGS || '')
+  .split('|')
+  .map((s) => s.trim())
+  .filter(Boolean)
+
+function heuristicHeading(text, hasList = false) {
   const t = (text || '').trim()
-  if (!t) return false
-  if (hasList) return false
-
-  if (/heading|title|subtitle/i.test(styleId)) return true
-
-  // Conservative heuristic to avoid misclassifying body text as headings.
+  if (!t || hasList) return false
   const lettersOnly = t.replace(/[^A-Za-z]/g, '')
   const words = t.split(/\s+/).filter(Boolean)
   const allCaps = lettersOnly.length > 0 && lettersOnly === lettersOnly.toUpperCase()
   const shortLine = t.length <= 45 && words.length <= 6
   const noSentencePunct = !/[.:;!?]/.test(t)
-
   return allCaps && shortLine && noSentencePunct
+}
+
+function isLikelyHeading(text, styleId = '', hasList = false) {
+  const t = (text || '').trim()
+  if (!t) return false
+  if (hasList) return false
+
+  // Strict mode: trust explicit DOCX heading/title styles only.
+  if (STRICT_MODE) return /heading|title|subtitle/i.test(styleId)
+
+  if (/heading|title|subtitle/i.test(styleId)) return true
+  return heuristicHeading(t, hasList)
 }
 
 const sourceDocx = latestFile(uploadsDir)
@@ -114,6 +126,17 @@ for (let i = 0; i < paragraphs.length; i++) {
 
   structure.push({ index: i, text, styleId, hasList, isHeading: heading })
   if (heading) headingsInOrder.push(text)
+}
+
+// If strict style-based detection finds too few headings, auto-fallback to conservative heuristic.
+let usedHeadingMode = STRICT_MODE ? 'strict-style' : 'heuristic'
+if (STRICT_MODE && headingsInOrder.length < 2) {
+  usedHeadingMode = 'strict-fallback-heuristic'
+  headingsInOrder.length = 0
+  for (const item of structure) {
+    item.isHeading = heuristicHeading(item.text, item.hasList)
+    if (item.isHeading) headingsInOrder.push(item.text)
+  }
 }
 
 // Save structure JSON (as requested)
@@ -167,9 +190,26 @@ fs.writeFileSync(
   ),
 )
 
+const sectionReport = []
+
 for (const block of blocks) {
+  const headingNorm = normalizeHeading(block.headingText)
+  const isProtected = PROTECTED_HEADINGS.includes(headingNorm)
   const candidateLines = mdSections[block.key] || []
   if (!mdSections[block.key] && block.key !== '__root__') missingSections.push(block.headingText || block.key)
+
+  if (isProtected) {
+    sectionReport.push({
+      heading: block.headingText,
+      key: block.key,
+      protected: true,
+      slots: block.contentParagraphIndexes.length,
+      sourceLines: candidateLines.length,
+      replaced: 0,
+      overflowDropped: candidateLines.length,
+    })
+    continue
+  }
 
   const limit = Math.min(block.contentParagraphIndexes.length, candidateLines.length)
 
@@ -184,6 +224,16 @@ for (const block of blocks) {
     for (let t = 1; t < textNodes.length; t++) textNodes[t].textContent = ''
     replaced += 1
   }
+
+  sectionReport.push({
+    heading: block.headingText,
+    key: block.key,
+    protected: false,
+    slots: block.contentParagraphIndexes.length,
+    sourceLines: candidateLines.length,
+    replaced: limit,
+    overflowDropped: Math.max(0, candidateLines.length - limit),
+  })
 }
 
 const serializer = new XMLSerializer()
@@ -193,9 +243,27 @@ zip.file(docXmlPath, updatedXml)
 const outDocx = path.join(outputDir, `optimized-resume-${ts}.docx`)
 await fs.promises.writeFile(outDocx, await zip.generateAsync({ type: 'nodebuffer' }))
 
+const strictReportPath = path.join(outputDir, `resume-strict-report-${ts}.json`)
+fs.writeFileSync(
+  strictReportPath,
+  JSON.stringify(
+    {
+      strictMode: STRICT_MODE,
+      headingModeUsed: usedHeadingMode,
+      protectedHeadings: PROTECTED_HEADINGS,
+      replaced,
+      missingSections: [...new Set(missingSections)],
+      sections: sectionReport,
+    },
+    null,
+    2,
+  ),
+)
+
 console.log('Source docx:', sourceDocx)
 console.log('Optimized markdown:', optimizedMd)
 console.log('Structure JSON:', structurePath)
+console.log('Strict report JSON:', strictReportPath)
 console.log('Exported docx:', outDocx)
 console.log(`Paragraphs replaced (content only): ${replaced}`)
 if (missingSections.length) {
