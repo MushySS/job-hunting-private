@@ -22,7 +22,9 @@ function mdToParagraphs(md) {
     .filter((line) => line && !/^```/.test(line))
     .map((line) => line
       .replace(/^#{1,6}\s+/, '')
-      .replace(/^[-*+]\s+/, '• ')
+      // Do not inject bullet glyphs; DOCX paragraph styles already render bullets.
+      .replace(/^[-*+]\s+/, '')
+      .replace(/^\d+[.)]\s+/, '')
       .replace(/\*\*(.*?)\*\*/g, '$1')
       .replace(/`([^`]+)`/g, '$1')
     )
