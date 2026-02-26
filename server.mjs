@@ -241,6 +241,54 @@ app.post('/api/parse-resume', upload.single('resume'), async (req, res) => {
   }
 })
 
+// Phase 3b: summarize parsed resume into personal-info snippets
+app.post('/api/summarize-personal-info', async (req, res) => {
+  try {
+    const { parsedResume } = req.body || {}
+    if (!parsedResume || typeof parsedResume !== 'object') {
+      return res.status(400).json({ error: 'parsedResume object is required' })
+    }
+
+    if (useLLM()) {
+      const prompt = `Summarize this parsed resume into short personal-info snippets for cover-letter tailoring.
+Return ONLY JSON in this format:
+{
+  "snippets": ["...", "..."],
+  "summary": "..."
+}
+Rules:
+- 5 to 10 snippets
+- each snippet short and factual
+- no invented claims
+
+Parsed resume JSON:
+${JSON.stringify(parsedResume, null, 2)}`
+
+      const content = await callOpenAI([
+        { role: 'system', content: 'You create concise, factual candidate profile snippets for job applications.' },
+        { role: 'user', content: prompt },
+      ], 0.2)
+
+      const parsed = extractJsonFromText(content)
+      const snippets = Array.isArray(parsed.snippets) ? parsed.snippets : []
+      const summary = parsed.summary || snippets.join(' | ')
+      return res.json({ mode: 'llm', snippets, summary })
+    }
+
+    const snippets = [
+      parsedResume.name ? `Candidate: ${parsedResume.name}` : '',
+      parsedResume.email ? `Email: ${parsedResume.email}` : '',
+      parsedResume.phone ? `Phone: ${parsedResume.phone}` : '',
+      ...(parsedResume.certifications || []).slice(0, 4).map((c) => `Certification: ${c}`),
+      ...(parsedResume.highlights || []).slice(0, 4),
+    ].filter(Boolean)
+
+    return res.json({ mode: 'fallback', snippets, summary: snippets.join(' | ') })
+  } catch (err) {
+    return res.status(500).json({ error: err.message })
+  }
+})
+
 // Agent A: Extractor
 app.post('/api/extract-job', async (req, res) => {
   try {
