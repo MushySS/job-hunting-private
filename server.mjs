@@ -410,6 +410,79 @@ app.get('/api/health', (_req, res) => {
   res.json({ ok: true, llmMode: useLLM(), model: OPENAI_MODEL })
 })
 
+async function ddgLiteSearch(query) {
+  const url = `https://duckduckgo.com/html/?q=${encodeURIComponent(query)}`
+  const resp = await fetch(url)
+  if (!resp.ok) return []
+  const html = await resp.text()
+
+  const results = []
+  const regex = /<a[^>]*class="result__a"[^>]*href="([^"]+)"[^>]*>(.*?)<\/a>/g
+  let m
+  while ((m = regex.exec(html)) !== null && results.length < 5) {
+    const href = m[1]
+    const title = m[2].replace(/<[^>]+>/g, '').trim()
+    results.push({ title, url: href })
+  }
+  return results
+}
+
+app.post('/api/advanced-optimize', async (req, res) => {
+  try {
+    const { jobAd = '', personalInfo = '', parsedResume = null } = req.body || {}
+    if (!jobAd) return res.status(400).json({ error: 'jobAd is required' })
+
+    const webResults = await ddgLiteSearch(`helpdesk resume improvements ${jobAd.slice(0, 120)}`)
+
+    const basePayload = {
+      jobAd,
+      personalInfo,
+      parsedResume,
+      webResults,
+    }
+
+    if (!useLLM()) {
+      return res.json({
+        mode: 'fallback',
+        suggestions: [
+          'Align your summary with L1/L2 Helpdesk keywords from the job ad.',
+          'Add quantifiable troubleshooting outcomes in experience bullets.',
+          'Prioritize Active Directory, Microsoft 365, ticketing, and customer service evidence.',
+        ],
+        matchedSkills: (parsedResume?.skills_detected || []).slice(0, 8),
+        gaps: ['Tailored metrics', 'Role-specific keyword alignment'],
+        webResults,
+      })
+    }
+
+    const prompt = `You are an advanced resume optimizer for IT Helpdesk roles.
+Given input JSON, produce ONLY valid JSON:
+{
+  "matchedSkills": ["..."],
+  "gaps": ["..."],
+  "suggestions": ["..."],
+  "improvedPersonalInfoSnippets": ["..."]
+}
+Rules:
+- Be factual and practical.
+- Keep suggestions concise and actionable.
+- Prefer ATS-friendly phrasing.
+
+Input JSON:
+${JSON.stringify(basePayload, null, 2)}`
+
+    const content = await callOpenAI([
+      { role: 'system', content: 'You optimize resumes and personal profiles for ATS and Helpdesk hiring managers.' },
+      { role: 'user', content: prompt },
+    ], 0.25)
+
+    const parsed = extractJsonFromText(content)
+    return res.json({ mode: 'llm', ...parsed, webResults })
+  } catch (err) {
+    return res.status(500).json({ error: err.message })
+  }
+})
+
 app.listen(port, () => {
   console.log(`Job Hunt Portal API running on http://localhost:${port}`)
   console.log(`Mode: ${useLLM() ? `LLM (${OPENAI_MODEL})` : 'fallback parser'} | Set LLM_MODE=true + OPENAI_API_KEY to enable`) 

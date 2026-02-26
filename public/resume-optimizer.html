@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Resume Optimizer</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" />
+  </head>
+  <body class="bg-light">
+    <main class="container py-5">
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 mb-0">Resume Optimizer (Advanced)</h1>
+        <a class="btn btn-outline-secondary btn-sm" href="/">Back to Main Page</a>
+      </div>
+
+      <div class="row g-4">
+        <div class="col-lg-6">
+          <div class="card border-0 shadow-sm">
+            <div class="card-body">
+              <label class="form-label">Job Ad</label>
+              <textarea id="jobAd" class="form-control" rows="10" placeholder="Paste job ad..."></textarea>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-6">
+          <div class="card border-0 shadow-sm">
+            <div class="card-body">
+              <label class="form-label">Personal Info</label>
+              <textarea id="personalInfo" class="form-control" rows="10" placeholder="Paste your current personal info snippets..."></textarea>
+              <label class="form-label mt-3">Resume (.docx)</label>
+              <input id="resumeUpload" class="form-control" type="file" accept=".doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-4 d-grid gap-2">
+        <button id="parseBtn" class="btn btn-outline-primary">1) Parse Resume</button>
+        <button id="optimizeBtn" class="btn btn-primary">2) Run Advanced Optimization</button>
+        <div id="status" class="small text-secondary">Waiting for input...</div>
+      </div>
+
+      <div class="row g-4 mt-1">
+        <div class="col-lg-6">
+          <div class="card border-0 shadow-sm">
+            <div class="card-body">
+              <h2 class="h6">Parsed Resume</h2>
+              <pre id="parsedOut" class="form-control" style="min-height:220px;white-space:pre-wrap"></pre>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-6">
+          <div class="card border-0 shadow-sm">
+            <div class="card-body">
+              <h2 class="h6">Optimization Output</h2>
+              <pre id="optOut" class="form-control" style="min-height:220px;white-space:pre-wrap"></pre>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <script>
+      const parseBtn = document.getElementById('parseBtn')
+      const optimizeBtn = document.getElementById('optimizeBtn')
+      const upload = document.getElementById('resumeUpload')
+      const jobAdEl = document.getElementById('jobAd')
+      const personalInfoEl = document.getElementById('personalInfo')
+      const parsedOut = document.getElementById('parsedOut')
+      const optOut = document.getElementById('optOut')
+      const statusEl = document.getElementById('status')
+
+      let parsedResume = null
+
+      parseBtn.addEventListener('click', async () => {
+        const f = upload.files?.[0]
+        if (!f) {
+          statusEl.textContent = 'Upload resume first.'
+          statusEl.className = 'small text-danger'
+          return
+        }
+        statusEl.textContent = 'Parsing resume...'
+        statusEl.className = 'small text-secondary'
+
+        try {
+          const form = new FormData()
+          form.append('resume', f)
+          const r = await fetch('/api/parse-resume', { method: 'POST', body: form })
+          const j = await r.json()
+          if (!r.ok) throw new Error(j.error || 'parse failed')
+          parsedResume = j.parsed
+          parsedOut.textContent = JSON.stringify(j.parsed, null, 2)
+          statusEl.textContent = 'Resume parsed.'
+          statusEl.className = 'small text-success'
+        } catch (e) {
+          statusEl.textContent = e.message
+          statusEl.className = 'small text-danger'
+        }
+      })
+
+      optimizeBtn.addEventListener('click', async () => {
+        if (!jobAdEl.value.trim()) {
+          statusEl.textContent = 'Paste job ad first.'
+          statusEl.className = 'small text-danger'
+          return
+        }
+
+        statusEl.textContent = 'Running advanced optimization...'
+        statusEl.className = 'small text-secondary'
+
+        try {
+          const r = await fetch('/api/advanced-optimize', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              jobAd: jobAdEl.value,
+              personalInfo: personalInfoEl.value,
+              parsedResume,
+            }),
+          })
+          const j = await r.json()
+          if (!r.ok) throw new Error(j.error || 'optimize failed')
+          optOut.textContent = JSON.stringify(j, null, 2)
+          if (Array.isArray(j.improvedPersonalInfoSnippets) && j.improvedPersonalInfoSnippets.length) {
+            personalInfoEl.value = j.improvedPersonalInfoSnippets.map((s) => `- ${s}`).join('\n')
+          }
+          statusEl.textContent = `Optimization complete (${j.mode}).`
+          statusEl.className = 'small text-success'
+        } catch (e) {
+          statusEl.textContent = e.message
+          statusEl.className = 'small text-danger'
+        }
+      })
+    </script>
+  </body>
+</html>

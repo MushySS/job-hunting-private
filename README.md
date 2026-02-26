@@ -1,6 +1,6 @@
-# Job Hunt Portal (Phase 3)
+# Job Hunt Portal (Phase 3+)
 
-Express + SQLite implementation of a two-agent pipeline + resume parsing:
+Express + SQLite implementation of a two-agent pipeline + resume parsing + advanced optimizer page:
 
 1. **Agent A** — Extract job ad into structured JSON and store in SQLite
 2. **Agent B** — Generate tailored cover letter using extracted JSON + sample cover letter
