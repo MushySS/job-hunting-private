@@ -79,12 +79,16 @@ const webResults = await ddgLiteSearch('IT helpdesk resume best practices ATS Au
 
 const prompt = `You are an expert resume writer for L1/L2 Helpdesk roles.
 Task: rewrite and optimize the candidate resume for the provided job ad.
-IMPORTANT: keep the SAME high-level section order as this array: ${JSON.stringify(sectionOrder)}.
 Do not fabricate experience. Improve wording, ATS alignment, and impact.
 
-Output ONLY markdown resume content.
-Do NOT wrap your output in code fences.
-Do NOT include lines like \`\`\`markdown or \`\`\`.
+CRITICAL FORMAT RULES:
+1) Use EXACT section headings from this array in this exact order:
+${JSON.stringify(sectionOrder)}
+2) Render each heading as a markdown H2 line like: ## HEADING
+3) Put bullet/content lines only under the correct heading
+4) Do NOT add or remove top-level headings
+5) Output ONLY markdown resume content
+6) Do NOT wrap output in code fences
 
 JOB AD:
 ${latestJob.source_job_ad}

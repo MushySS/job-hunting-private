@@ -54,18 +54,21 @@ function parseMdSections(md) {
   return sections
 }
 
-function isLikelyHeading(text, styleId = '') {
+function isLikelyHeading(text, styleId = '', hasList = false) {
   const t = (text || '').trim()
   if (!t) return false
+  if (hasList) return false
 
   if (/heading|title|subtitle/i.test(styleId)) return true
 
-  const letters = (t.match(/[A-Za-z]/g) || []).length
-  const isShort = t.length <= 70
-  const mostlyUpper = letters > 0 && t.replace(/[^A-Za-z]/g, '').toUpperCase() === t.replace(/[^A-Za-z]/g, '')
-  const simple = !/[.:;!?]/.test(t)
+  // Conservative heuristic to avoid misclassifying body text as headings.
+  const lettersOnly = t.replace(/[^A-Za-z]/g, '')
+  const words = t.split(/\s+/).filter(Boolean)
+  const allCaps = lettersOnly.length > 0 && lettersOnly === lettersOnly.toUpperCase()
+  const shortLine = t.length <= 45 && words.length <= 6
+  const noSentencePunct = !/[.:;!?]/.test(t)
 
-  return isShort && mostlyUpper && simple
+  return allCaps && shortLine && noSentencePunct
 }
 
 const sourceDocx = latestFile(uploadsDir)
@@ -107,52 +110,80 @@ for (let i = 0; i < paragraphs.length; i++) {
   const styleAttr = select('./w:pPr/w:pStyle/@w:val', p)?.[0]
   const styleId = styleAttr?.value || ''
   const hasList = select('./w:pPr/w:numPr', p).length > 0
-  const heading = isLikelyHeading(text, styleId)
+  const heading = isLikelyHeading(text, styleId, hasList)
 
   structure.push({ index: i, text, styleId, hasList, isHeading: heading })
   if (heading) headingsInOrder.push(text)
 }
 
-// Save structure JSON first (as requested)
+// Save structure JSON (as requested)
 fs.mkdirSync(outputDir, { recursive: true })
 const ts = new Date().toISOString().replace(/[:.]/g, '-')
 const structurePath = path.join(outputDir, `resume-structure-${ts}.json`)
-fs.writeFileSync(structurePath, JSON.stringify({ headingsInOrder, structure }, null, 2))
 
-// Use structure + headings to preserve layout and only replace non-heading content.
-let currentHeadingKey = '__root__'
-let rootIdx = 0
-const sectionIdx = {}
-let replaced = 0
+// Build section blocks from original DOCX and replace content *within each section only*.
+// This avoids heading/content style drift caused by cross-section fallback.
+const blocks = []
+let current = { key: '__root__', headingText: '', contentParagraphIndexes: [] }
 
-for (let i = 0; i < paragraphs.length; i++) {
-  const p = paragraphs[i]
+for (let i = 0; i < structure.length; i++) {
   const meta = structure[i]
+  if (meta.isHeading) {
+    blocks.push(current)
+    current = {
+      key: normalizeHeading(meta.text) || '__root__',
+      headingText: meta.text,
+      contentParagraphIndexes: [],
+    }
+    continue
+  }
+
+  const p = paragraphs[i]
   const textNodes = select('.//w:t', p)
   if (!textNodes.length) continue
 
-  if (meta.isHeading) {
-    currentHeadingKey = normalizeHeading(meta.text)
-    continue // preserve heading text exactly
+  // Replace only non-empty body paragraphs. Keep blanks/layout spacers untouched.
+  if ((meta.text || '').trim()) current.contentParagraphIndexes.push(i)
+}
+blocks.push(current)
+
+let replaced = 0
+const missingSections = []
+
+fs.writeFileSync(
+  structurePath,
+  JSON.stringify(
+    {
+      headingsInOrder,
+      structure,
+      blocks: blocks.map((b) => ({
+        key: b.key,
+        headingText: b.headingText,
+        contentSlots: b.contentParagraphIndexes.length,
+      })),
+    },
+    null,
+    2,
+  ),
+)
+
+for (const block of blocks) {
+  const candidateLines = mdSections[block.key] || []
+  if (!mdSections[block.key] && block.key !== '__root__') missingSections.push(block.headingText || block.key)
+
+  const limit = Math.min(block.contentParagraphIndexes.length, candidateLines.length)
+
+  for (let j = 0; j < limit; j++) {
+    const pIndex = block.contentParagraphIndexes[j]
+    const p = paragraphs[pIndex]
+    const textNodes = select('.//w:t', p)
+    const next = candidateLines[j]
+    if (!textNodes.length || !next) continue
+
+    textNodes[0].textContent = next
+    for (let t = 1; t < textNodes.length; t++) textNodes[t].textContent = ''
+    replaced += 1
   }
-
-  const section = mdSections[currentHeadingKey] || []
-  if (!(currentHeadingKey in sectionIdx)) sectionIdx[currentHeadingKey] = 0
-  let next = section[sectionIdx[currentHeadingKey]]
-
-  if (!next) {
-    // fallback to root content if section is exhausted/unmatched
-    const root = mdSections.__root__ || []
-    next = root[rootIdx++]
-  }
-
-  if (!next) continue
-
-  textNodes[0].textContent = next
-  for (let t = 1; t < textNodes.length; t++) textNodes[t].textContent = ''
-
-  if (mdSections[currentHeadingKey]?.length) sectionIdx[currentHeadingKey] += 1
-  replaced += 1
 }
 
 const serializer = new XMLSerializer()
@@ -167,3 +198,7 @@ console.log('Optimized markdown:', optimizedMd)
 console.log('Structure JSON:', structurePath)
 console.log('Exported docx:', outDocx)
 console.log(`Paragraphs replaced (content only): ${replaced}`)
+if (missingSections.length) {
+  console.log('Sections without heading match in markdown (left structurally intact):')
+  console.log([...new Set(missingSections)].join(' | '))
+}

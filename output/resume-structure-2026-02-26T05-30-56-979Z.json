@@ -1,0 +1,363 @@
+{
+  "headingsInOrder": [
+    "PROFILE",
+    "EDUCATION & QUALIFICATIONS",
+    "KEY SKILLS",
+    "PROFESSIONAL PROJECTS",
+    "WORK EXPERIENCE",
+    "ADDITIONAL INFORMATION",
+    "INTERESTS"
+  ],
+  "structure": [
+    {
+      "index": 0,
+      "text": "Mussab Syed",
+      "styleId": "",
+      "hasList": false,
+      "isHeading": false
+    },
+    {
+      "index": 1,
+      "text": "0450092852 | syed.m.mussab1@gmail.com | www.linkedin.com/in/mussab-syed",
+      "styleId": "",
+      "hasList": false,
+      "isHeading": false
+    },
+    {
+      "index": 2,
+      "text": "PROFILE",
+      "styleId": "",
+      "hasList": false,
+      "isHeading": true
+    },
+    {
+      "index": 3,
+      "text": "Information Technology graduate with foundations in web technologies, database systems and cloud services. Highly motivated and eager to learn, with a strong work ethic and solid communication skills developed through customer-facing experience and industry-based projects. Seeking an entry-level opportunity to develop my skills and grow within the technology support domain.",
+      "styleId": "",
+      "hasList": false,
+      "isHeading": false
+    },
+    {
+      "index": 4,
+      "text": "EDUCATION & QUALIFICATIONS",
+      "styleId": "",
+      "hasList": false,
+      "isHeading": true
+    },
+    {
+      "index": 5,
+      "text": "RMIT - Bachelor`s degree Information Technology  Graduated 2025",
+      "styleId": "",
+      "hasList": false,
+      "isHeading": false
+    },
+    {
+      "index": 6,
+      "text": "Microsoft Certified Azure Fundamentals (AZ-900) Completed 2026",
+      "styleId": "",
+      "hasList": false,
+      "isHeading": false
+    },
+    {
+      "index": 7,
+      "text": "KEY SKILLS",
+      "styleId": "",
+      "hasList": false,
+      "isHeading": true
+    },
+    {
+      "index": 8,
+      "text": "Proven ability to collaborate in cross-functional academic and operational teams to deliver projects and meet performance targets.",
+      "styleId": "",
+      "hasList": true,
+      "isHeading": false
+    },
+    {
+      "index": 9,
+      "text": "Applied structured problem-solving to identify, assess, and resolve technical issues.",
+      "styleId": "",
+      "hasList": true,
+      "isHeading": false
+    },
+    {
+      "index": 10,
+      "text": "Documented incidents and technical processes clearly for non-technical stakeholders",
+      "styleId": "",
+      "hasList": true,
+      "isHeading": false
+    },
+    {
+      "index": 11,
+      "text": "Adapted quickly to new environments by working across multiple agencies and managing concurrent responsibilities efficiently.",
+      "styleId": "",
+      "hasList": true,
+      "isHeading": false
+    },
+    {
+      "index": 12,
+      "text": "Followed established procedures and escalated issues appropriately when required",
+      "styleId": "",
+      "hasList": true,
+      "isHeading": false
+    },
+    {
+      "index": 13,
+      "text": "Technical Skills:",
+      "styleId": "",
+      "hasList": true,
+      "isHeading": false
+    },
+    {
+      "index": 14,
+      "text": "Programming and Scripting: Python, SQL Java, JavaScript, PowerShell",
+      "styleId": "",
+      "hasList": true,
+      "isHeading": false
+    },
+    {
+      "index": 15,
+      "text": "Web Development and Frameworks: HTML, CSS, UI/UX Design, Bootstrap 5",
+      "styleId": "",
+      "hasList": true,
+      "isHeading": false
+    },
+    {
+      "index": 16,
+      "text": "Version Control and Best Practices: Git, Agile/Scrum methodology, User Stories, Kanban, etc",
+      "styleId": "",
+      "hasList": true,
+      "isHeading": false
+    },
+    {
+      "index": 17,
+      "text": "PROFESSIONAL PROJECTS",
+      "styleId": "",
+      "hasList": false,
+      "isHeading": true
+    },
+    {
+      "index": 18,
+      "text": "VAMBAT – Visualisation platform for advanced biodiversity monitoring (WIL placement)",
+      "styleId": "",
+      "hasList": false,
+      "isHeading": false
+    },
+    {
+      "index": 19,
+      "text": "Collaborated with cross-functional teams to process IOT-generated CSV data into a visual dashboard and provided clear user guidance and documentation to support non-technical users.",
+      "styleId": "",
+      "hasList": false,
+      "isHeading": false
+    },
+    {
+      "index": 20,
+      "text": "Troubleshot application, database and connectivity issues across PostgreSQL, Node-RED and Grafana to restore normal functionality for team members.",
+      "styleId": "",
+      "hasList": true,
+      "isHeading": false
+    },
+    {
+      "index": 21,
+      "text": "Deployed and configured a Docker based application stack, ensuring services run reliably by monitoring logs and ingestion metrics to identify and resolve data processing issues",
+      "styleId": "",
+      "hasList": true,
+      "isHeading": false
+    },
+    {
+      "index": 22,
+      "text": "Create clear and detailed setup and troubleshooting documentation to assist users and support future development and maintenance.",
+      "styleId": "",
+      "hasList": true,
+      "isHeading": false
+    },
+    {
+      "index": 23,
+      "text": "VetCARE – Online Veterinary Clinic Management System (Team Lead)",
+      "styleId": "",
+      "hasList": false,
+      "isHeading": false
+    },
+    {
+      "index": 24,
+      "text": "Served as Team Lead and coordinated sprint deliverables and assisted in troubleshooting backend and frontend issues to ensure stable system functions and timely project completion.",
+      "styleId": "",
+      "hasList": false,
+      "isHeading": false
+    },
+    {
+      "index": 25,
+      "text": "Troubleshot backend and database connectivity issues for team members to ensure system functionality and minimal disruptions to the workflow during development.",
+      "styleId": "",
+      "hasList": true,
+      "isHeading": false
+    },
+    {
+      "index": 26,
+      "text": "Conducted user testing with non-technical users, monitoring system interaction to identify usability issues and gather feedback for further improvements.",
+      "styleId": "",
+      "hasList": true,
+      "isHeading": false
+    },
+    {
+      "index": 27,
+      "text": "Acted as the primary liaison between the development team and product owner, facilitating sprint meetings and clarifying technical requirements.",
+      "styleId": "",
+      "hasList": true,
+      "isHeading": false
+    },
+    {
+      "index": 28,
+      "text": "",
+      "styleId": "",
+      "hasList": false,
+      "isHeading": false
+    },
+    {
+      "index": 29,
+      "text": "WORK EXPERIENCE",
+      "styleId": "",
+      "hasList": false,
+      "isHeading": true
+    },
+    {
+      "index": 30,
+      "text": "Warehouse Pick Packer | Premier Fresh (Fresh Produce Warehouse)Jun 2025 to Feb 2026",
+      "styleId": "",
+      "hasList": false,
+      "isHeading": false
+    },
+    {
+      "index": 31,
+      "text": "One of Australia´s largest fresh produce supply chain companies, distributing fresh fruit and vegetables to customers worldwide",
+      "styleId": "",
+      "hasList": false,
+      "isHeading": false
+    },
+    {
+      "index": 32,
+      "text": "Worked in a fast-paced, process driven warehouse environment to ensure produce is repacked accurately and consistently according to the Value-Added Batch receipts provided by clients.",
+      "styleId": "",
+      "hasList": true,
+      "isHeading": false
+    },
+    {
+      "index": 33,
+      "text": "Applied technical troubleshooting skills to teach others how to operate and maintain label printers to minimise workflow disruptions",
+      "styleId": "",
+      "hasList": true,
+      "isHeading": false
+    },
+    {
+      "index": 34,
+      "text": "Followed established procedures and deferred issues to others when necessary to maintain workflow efficiency",
+      "styleId": "",
+      "hasList": true,
+      "isHeading": false
+    },
+    {
+      "index": 35,
+      "text": "Mobile Patrol Officer | SOS SecurityAug 2022 to Nov 2024",
+      "styleId": "",
+      "hasList": false,
+      "isHeading": false
+    },
+    {
+      "index": 36,
+      "text": "SOS provides ethical security services while also creating pathways to employment for disadvantaged members of the community",
+      "styleId": "",
+      "hasList": false,
+      "isHeading": false
+    },
+    {
+      "index": 37,
+      "text": "Responded to incidents on a constructions site and assessed situation using structured problem solving to determine appropriate action",
+      "styleId": "",
+      "hasList": true,
+      "isHeading": false
+    },
+    {
+      "index": 38,
+      "text": "Conducted routine inspections and documented incidents in detailed reports and communication updates to clients and other relevant stakeholders",
+      "styleId": "",
+      "hasList": true,
+      "isHeading": false
+    },
+    {
+      "index": 39,
+      "text": "ADDITIONAL INFORMATION",
+      "styleId": "",
+      "hasList": false,
+      "isHeading": true
+    },
+    {
+      "index": 40,
+      "text": "Training – Currently studying to get Azure Administrator Associate (AZ-104)",
+      "styleId": "",
+      "hasList": false,
+      "isHeading": false
+    },
+    {
+      "index": 41,
+      "text": "Languages – Hindi; Urdu",
+      "styleId": "",
+      "hasList": false,
+      "isHeading": false
+    },
+    {
+      "index": 42,
+      "text": "INTERESTS",
+      "styleId": "",
+      "hasList": false,
+      "isHeading": true
+    },
+    {
+      "index": 43,
+      "text": "Competitive esports player (in-game leader responsible for team coordination and decision-making under pressure) and club cricket (former team captain, demonstrating leadership and teamwork). Interested in technology trends and continuous skill development, specifically PC hardware and currently learning software development.",
+      "styleId": "",
+      "hasList": false,
+      "isHeading": false
+    }
+  ],
+  "blocks": [
+    {
+      "key": "__root__",
+      "headingText": "",
+      "contentSlots": 2
+    },
+    {
+      "key": "profile",
+      "headingText": "PROFILE",
+      "contentSlots": 1
+    },
+    {
+      "key": "education qualifications",
+      "headingText": "EDUCATION & QUALIFICATIONS",
+      "contentSlots": 2
+    },
+    {
+      "key": "key skills",
+      "headingText": "KEY SKILLS",
+      "contentSlots": 9
+    },
+    {
+      "key": "professional projects",
+      "headingText": "PROFESSIONAL PROJECTS",
+      "contentSlots": 10
+    },
+    {
+      "key": "work experience",
+      "headingText": "WORK EXPERIENCE",
+      "contentSlots": 9
+    },
+    {
+      "key": "additional information",
+      "headingText": "ADDITIONAL INFORMATION",
+      "contentSlots": 2
+    },
+    {
+      "key": "interests",
+      "headingText": "INTERESTS",
+      "contentSlots": 1
+    }
+  ]
+}
