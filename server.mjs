@@ -424,11 +424,13 @@ app.get('/api/extractions', (_req, res) => {
   res.json(rows)
 })
 
-app.post('/api/generate-optimized-docx', async (_req, res) => {
+app.post('/api/generate-optimized-docx', async (req, res) => {
   try {
+    const { specialInstructions = '' } = req.body || {}
+
     await execFileAsync(process.execPath, ['scripts/optimize-resume.mjs'], {
       cwd: process.cwd(),
-      env: process.env,
+      env: { ...process.env, SPECIAL_INSTRUCTIONS: specialInstructions },
       maxBuffer: 1024 * 1024 * 5,
     })
 
@@ -474,7 +476,7 @@ async function ddgLiteSearch(query) {
 
 app.post('/api/advanced-optimize', async (req, res) => {
   try {
-    const { jobAd = '', personalInfo = '', parsedResume = null } = req.body || {}
+    const { jobAd = '', personalInfo = '', parsedResume = null, specialInstructions = '' } = req.body || {}
     if (!jobAd) return res.status(400).json({ error: 'jobAd is required' })
 
     const webResults = await ddgLiteSearch(`helpdesk resume improvements ${jobAd.slice(0, 120)}`)
@@ -484,6 +486,7 @@ app.post('/api/advanced-optimize', async (req, res) => {
       personalInfo,
       parsedResume,
       webResults,
+      specialInstructions,
     }
 
     if (!useLLM()) {

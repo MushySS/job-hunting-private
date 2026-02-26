@@ -41,6 +41,8 @@
       </div>
 
       <div class="mt-4 d-grid gap-2">
+        <label for="specialInstructions" class="form-label mb-0">Special Instructions (for LLM optimized resume generation)</label>
+        <textarea id="specialInstructions" class="form-control" rows="4" placeholder="e.g. Keep tone concise, prioritize service desk KPI achievements, avoid mentioning technologies not in resume."></textarea>
         <button id="parseBtn" class="btn btn-outline-primary">1) Parse Resume</button>
         <button id="optimizeBtn" class="btn btn-primary">2) Run Advanced Optimization</button>
         <button id="generateDocxBtn" class="btn btn-success">3) Generate Optimized DOCX</button>
@@ -80,6 +82,7 @@
       const upload = document.getElementById('resumeUpload')
       const jobAdEl = document.getElementById('jobAd')
       const personalInfoEl = document.getElementById('personalInfo')
+      const specialInstructionsEl = document.getElementById('specialInstructions')
       const parsedOut = document.getElementById('parsedOut')
       const optOut = document.getElementById('optOut')
       const statusEl = document.getElementById('status')
@@ -178,6 +181,7 @@
               jobAd: jobAdEl.value,
               personalInfo: personalInfoEl.value,
               parsedResume,
+              specialInstructions: specialInstructionsEl.value,
             }),
           })
           const j = await r.json()
@@ -202,7 +206,11 @@
         statusEl.className = 'small text-secondary'
 
         try {
-          const r = await fetch('/api/generate-optimized-docx', { method: 'POST' })
+          const r = await fetch('/api/generate-optimized-docx', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ specialInstructions: specialInstructionsEl.value }),
+          })
           const j = await r.json()
           if (!r.ok) throw new Error(j.error || 'docx generation failed')
 

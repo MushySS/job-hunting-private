@@ -5,6 +5,7 @@ import { DatabaseSync } from 'node:sqlite'
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY
 const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-4o-mini'
+const SPECIAL_INSTRUCTIONS = process.env.SPECIAL_INSTRUCTIONS || ''
 
 if (!OPENAI_API_KEY) {
   console.error('Missing OPENAI_API_KEY in environment')
@@ -98,6 +99,9 @@ ${resumeText}
 
 WEB REFERENCES:
 ${JSON.stringify(webResults, null, 2)}
+
+SPECIAL INSTRUCTIONS (highest priority if provided):
+${SPECIAL_INSTRUCTIONS || 'N/A'}
 `
 
 let optimized = await callOpenAI([
