@@ -6,6 +6,10 @@ import { DatabaseSync } from 'node:sqlite'
 const app = express()
 const port = process.env.PORT || 3000
 
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY || ''
+const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-4o-mini'
+const LLM_MODE = (process.env.LLM_MODE || 'false').toLowerCase() === 'true'
+
 const dataDir = path.resolve('data')
 const dbPath = path.resolve('data/job-hunt.db')
 fs.mkdirSync(dataDir, { recursive: true })
@@ -65,50 +69,21 @@ function extractListByKeywords(text, candidates) {
   return candidates.filter((c) => lc.includes(c.toLowerCase()))
 }
 
-// Agent A: Extractor
-app.post('/api/extract-job', (req, res) => {
-  const { jobAd } = req.body || {}
-  if (!jobAd || typeof jobAd !== 'string') {
-    return res.status(400).json({ error: 'jobAd is required' })
-  }
-
-  const extraction = {
+function fallbackExtraction(jobAd) {
+  return {
     role_title: extractRole(jobAd),
     company: extractCompany(jobAd),
     location: (jobAd.match(/Location\s+([A-Za-z ,]+)/i)?.[1] || '').trim(),
     employment_type: (jobAd.match(/Job type\s+([A-Za-z ,&/-]+)/i)?.[1] || '').trim(),
     seniority: /level\s*1\s*&\s*2|level\s*2/i.test(jobAd) ? 'Level 1/2 support' : '',
     must_have_skills: extractListByKeywords(jobAd, [
-      'Active Directory',
-      'Office 365',
-      'TCP/IP',
-      'LAN',
-      'WAN',
-      'Windows',
-      'customer service',
-      'ticket',
-      'troubleshoot',
-      'KPI',
+      'Active Directory', 'Office 365', 'TCP/IP', 'LAN', 'WAN', 'Windows',
+      'customer service', 'ticket', 'troubleshoot', 'KPI',
     ]),
-    nice_to_have_skills: extractListByKeywords(jobAd, [
-      'CompTIA A+',
-      'Microsoft certification',
-      'ITIL',
-      'AZ-900',
-      'AZ-104',
-    ]),
+    nice_to_have_skills: extractListByKeywords(jobAd, ['CompTIA A+', 'Microsoft certification', 'ITIL', 'AZ-900', 'AZ-104']),
     tools_tech_mentioned: extractListByKeywords(jobAd, [
-      'Windows Server 2012 R2',
-      'Active Directory',
-      'Windows 7',
-      'Windows 10',
-      'Office 365',
-      'TCP/IP',
-      'LAN',
-      'WAN',
-      'Apple',
-      'Android',
-      'Wiki',
+      'Windows Server 2012 R2', 'Active Directory', 'Windows 7', 'Windows 10',
+      'Office 365', 'TCP/IP', 'LAN', 'WAN', 'Apple', 'Android', 'Wiki',
     ]),
     responsibilities: [
       'Respond to service desk/help desk requests',
@@ -117,93 +92,193 @@ app.post('/api/extract-job', (req, res) => {
       'Maintain user communication and KPI alignment',
     ],
     keywords_for_ats: extractListByKeywords(jobAd, [
-      'Help Desk',
-      'Service Desk',
-      'Level 1',
-      'Level 2',
-      'Active Directory',
-      'Office 365',
-      'TCP/IP',
-      'customer service',
-      'KPI',
-      'troubleshooting',
+      'Help Desk', 'Service Desk', 'Level 1', 'Level 2', 'Active Directory',
+      'Office 365', 'TCP/IP', 'customer service', 'KPI', 'troubleshooting',
     ]),
     selection_criteria: [
       /2\+?\s*years.*Australia/i.test(jobAd) ? "2+ years' work experience in Australia" : '',
       /excellent communication/i.test(jobAd) ? 'Excellent communication skills' : '',
       /ownership|take Ownership/i.test(jobAd) ? 'Ownership and follow-through' : '',
     ].filter(Boolean),
-    notes: 'Auto-extracted via Agent A heuristic parser. Review before applying.',
+    notes: 'Auto-extracted via fallback heuristic parser. Review before applying.',
+  }
+}
+
+async function callOpenAI(messages, temperature = 0.2) {
+  const resp = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${OPENAI_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ model: OPENAI_MODEL, messages, temperature }),
+  })
+
+  if (!resp.ok) {
+    const txt = await resp.text()
+    throw new Error(`OpenAI error ${resp.status}: ${txt.slice(0, 300)}`)
   }
 
-  const stmt = db.prepare(`
-    INSERT INTO job_extractions (
-      company, role_title, location, employment_type, seniority,
-      must_have_skills, nice_to_have_skills, tools_tech_mentioned,
-      responsibilities, keywords_for_ats, selection_criteria, notes, source_job_ad
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `)
+  const data = await resp.json()
+  return data?.choices?.[0]?.message?.content || ''
+}
 
-  const info = stmt.run(
-    extraction.company,
-    extraction.role_title,
-    extraction.location,
-    extraction.employment_type,
-    extraction.seniority,
-    JSON.stringify(extraction.must_have_skills),
-    JSON.stringify(extraction.nice_to_have_skills),
-    JSON.stringify(extraction.tools_tech_mentioned),
-    JSON.stringify(extraction.responsibilities),
-    JSON.stringify(extraction.keywords_for_ats),
-    JSON.stringify(extraction.selection_criteria),
-    extraction.notes,
-    jobAd,
-  )
+function extractJsonFromText(text) {
+  const match = text.match(/\{[\s\S]*\}/)
+  if (!match) throw new Error('No JSON object found in LLM output')
+  return JSON.parse(match[0])
+}
 
-  return res.json({ extractionId: Number(info.lastInsertRowid), extraction })
+async function llmExtraction(jobAd) {
+  const schemaPrompt = `Return ONLY valid JSON with this exact schema keys:\n{
+  "role_title": "",
+  "company": "",
+  "location": "",
+  "employment_type": "",
+  "seniority": "",
+  "must_have_skills": [],
+  "nice_to_have_skills": [],
+  "tools_tech_mentioned": [],
+  "responsibilities": [],
+  "keywords_for_ats": [],
+  "selection_criteria": [],
+  "notes": ""
+}\nRules: no markdown; do not invent facts; use empty string/array if unknown.`
+
+  const content = await callOpenAI([
+    { role: 'system', content: 'You are Agent A for L1 Helpdesk/Service Desk job extraction.' },
+    { role: 'user', content: `${schemaPrompt}\n\nJob Ad:\n${jobAd}` },
+  ])
+
+  return extractJsonFromText(content)
+}
+
+async function llmCoverLetter({ extraction, sampleCoverLetter, yourName }) {
+  const prompt = `You are Agent B for cover letter tailoring.
+Create a concise professional cover letter for L1 Helpdesk/Service Desk style roles.
+Keep claims truthful and align to ATS keywords.
+Replace placeholders with real values.
+
+Extraction JSON:\n${JSON.stringify(extraction, null, 2)}
+
+Base letter:\n${sampleCoverLetter}
+
+Candidate name: ${yourName}
+
+Return only the final cover letter text.`
+
+  return callOpenAI([
+    { role: 'system', content: 'You are a precise job application writer.' },
+    { role: 'user', content: prompt },
+  ], 0.35)
+}
+
+function useLLM() {
+  return LLM_MODE && Boolean(OPENAI_API_KEY)
+}
+
+// Agent A: Extractor
+app.post('/api/extract-job', async (req, res) => {
+  try {
+    const { jobAd } = req.body || {}
+    if (!jobAd || typeof jobAd !== 'string') {
+      return res.status(400).json({ error: 'jobAd is required' })
+    }
+
+    const extraction = useLLM() ? await llmExtraction(jobAd) : fallbackExtraction(jobAd)
+
+    const stmt = db.prepare(`
+      INSERT INTO job_extractions (
+        company, role_title, location, employment_type, seniority,
+        must_have_skills, nice_to_have_skills, tools_tech_mentioned,
+        responsibilities, keywords_for_ats, selection_criteria, notes, source_job_ad
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `)
+
+    const info = stmt.run(
+      extraction.company || '',
+      extraction.role_title || '',
+      extraction.location || '',
+      extraction.employment_type || '',
+      extraction.seniority || '',
+      JSON.stringify(extraction.must_have_skills || []),
+      JSON.stringify(extraction.nice_to_have_skills || []),
+      JSON.stringify(extraction.tools_tech_mentioned || []),
+      JSON.stringify(extraction.responsibilities || []),
+      JSON.stringify(extraction.keywords_for_ats || []),
+      JSON.stringify(extraction.selection_criteria || []),
+      extraction.notes || '',
+      jobAd,
+    )
+
+    return res.json({ extractionId: Number(info.lastInsertRowid), extraction, mode: useLLM() ? 'llm' : 'fallback' })
+  } catch (err) {
+    return res.status(500).json({ error: err.message })
+  }
 })
 
 // Agent B: Cover-letter generator
-app.post('/api/generate-letter', (req, res) => {
-  const { extractionId, sampleCoverLetter, yourName = '[MY NAME]' } = req.body || {}
+app.post('/api/generate-letter', async (req, res) => {
+  try {
+    const { extractionId, sampleCoverLetter, yourName = '[MY NAME]' } = req.body || {}
 
-  if (!extractionId || !sampleCoverLetter) {
-    return res.status(400).json({ error: 'extractionId and sampleCoverLetter are required' })
+    if (!extractionId || !sampleCoverLetter) {
+      return res.status(400).json({ error: 'extractionId and sampleCoverLetter are required' })
+    }
+
+    const row = db.prepare('SELECT * FROM job_extractions WHERE id = ?').get(extractionId)
+    if (!row) return res.status(404).json({ error: 'Extraction not found' })
+
+    const extraction = {
+      company: row.company,
+      role_title: row.role_title,
+      location: row.location,
+      employment_type: row.employment_type,
+      seniority: row.seniority,
+      must_have_skills: JSON.parse(row.must_have_skills || '[]'),
+      nice_to_have_skills: JSON.parse(row.nice_to_have_skills || '[]'),
+      tools_tech_mentioned: JSON.parse(row.tools_tech_mentioned || '[]'),
+      responsibilities: JSON.parse(row.responsibilities || '[]'),
+      keywords_for_ats: JSON.parse(row.keywords_for_ats || '[]'),
+      selection_criteria: JSON.parse(row.selection_criteria || '[]'),
+      notes: row.notes,
+    }
+
+    let letter
+    if (useLLM()) {
+      letter = await llmCoverLetter({ extraction, sampleCoverLetter, yourName })
+    } else {
+      const company = extraction.company || '[COMPANY NAME]'
+      const role = extraction.role_title || 'Level 1 IT Support Technician'
+      const keywords = extraction.keywords_for_ats || []
+
+      letter = sampleCoverLetter
+        .replaceAll('[COMPANY NAME]', company)
+        .replaceAll('[MY NAME]', yourName)
+        .replace(/Level 1 IT Support Technician/gi, role)
+
+      const atsLine = keywords.length
+        ? `\n\nI am well prepared to contribute in areas such as ${keywords.slice(0, 8).join(', ')}, while maintaining strong customer service and structured service desk practices.`
+        : ''
+      letter += atsLine
+    }
+
+    const save = db.prepare(`
+      INSERT INTO cover_letters (extraction_id, company, role_title, letter_text)
+      VALUES (?, ?, ?, ?)
+    `)
+    const saveInfo = save.run(extractionId, extraction.company || '', extraction.role_title || '', letter)
+
+    return res.json({
+      letterId: Number(saveInfo.lastInsertRowid),
+      company: extraction.company,
+      role_title: extraction.role_title,
+      coverLetter: letter,
+      mode: useLLM() ? 'llm' : 'fallback',
+    })
+  } catch (err) {
+    return res.status(500).json({ error: err.message })
   }
-
-  const row = db
-    .prepare('SELECT * FROM job_extractions WHERE id = ?')
-    .get(extractionId)
-
-  if (!row) return res.status(404).json({ error: 'Extraction not found' })
-
-  const company = row.company || '[COMPANY NAME]'
-  const role = row.role_title || 'Level 1 IT Support Technician'
-  const keywords = JSON.parse(row.keywords_for_ats || '[]')
-
-  let letter = sampleCoverLetter
-    .replaceAll('[COMPANY NAME]', company)
-    .replaceAll('[MY NAME]', yourName)
-    .replace(/Level 1 IT Support Technician/gi, role)
-
-  const atsLine = keywords.length
-    ? `\n\nI am well prepared to contribute in areas such as ${keywords.slice(0, 8).join(', ')}, while maintaining strong customer service and structured service desk practices.`
-    : ''
-
-  letter += atsLine
-
-  const save = db.prepare(`
-    INSERT INTO cover_letters (extraction_id, company, role_title, letter_text)
-    VALUES (?, ?, ?, ?)
-  `)
-  const saveInfo = save.run(extractionId, company, role, letter)
-
-  return res.json({
-    letterId: Number(saveInfo.lastInsertRowid),
-    company,
-    role_title: role,
-    coverLetter: letter,
-  })
 })
 
 app.get('/api/extractions', (_req, res) => {
@@ -213,6 +288,11 @@ app.get('/api/extractions', (_req, res) => {
   res.json(rows)
 })
 
+app.get('/api/health', (_req, res) => {
+  res.json({ ok: true, llmMode: useLLM(), model: OPENAI_MODEL })
+})
+
 app.listen(port, () => {
   console.log(`Job Hunt Portal API running on http://localhost:${port}`)
+  console.log(`Mode: ${useLLM() ? `LLM (${OPENAI_MODEL})` : 'fallback parser'} | Set LLM_MODE=true + OPENAI_API_KEY to enable`) 
 })

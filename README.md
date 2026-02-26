@@ -24,6 +24,23 @@ npm start
 
 Open: `http://localhost:3000`
 
+## Enable LLM mode (Agent A + Agent B with tokens)
+
+Set environment variables before starting:
+
+```bash
+export LLM_MODE=true
+export OPENAI_API_KEY="your_api_key_here"
+export OPENAI_MODEL="gpt-4o-mini"   # optional
+npm start
+```
+
+Quick check:
+
+```bash
+curl http://localhost:3000/api/health
+```
+
 ## API endpoints
 
 - `POST /api/extract-job`
