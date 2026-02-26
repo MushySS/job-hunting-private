@@ -27,9 +27,10 @@
             <div class="card-body">
               <label class="form-label">Personal Info (synced with main page)</label>
               <textarea id="personalInfo" class="form-control" rows="10" placeholder="Paste your current personal info snippets..."></textarea>
-              <div class="d-flex gap-2 mt-2">
+              <div class="d-flex gap-2 mt-2 flex-wrap">
                 <button id="savePersonalBtn" class="btn btn-success btn-sm">Save</button>
                 <button id="clearPersonalBtn" class="btn btn-outline-danger btn-sm">Clear</button>
+                <button id="updateInfoBtn" class="btn btn-outline-primary btn-sm">Update Info from Parsed Resume</button>
               </div>
               <div id="personalStatus" class="small text-secondary mt-2">Personal info sync ready.</div>
               <label class="form-label mt-3">Resume (.docx)</label>
@@ -42,6 +43,7 @@
       <div class="mt-4 d-grid gap-2">
         <button id="parseBtn" class="btn btn-outline-primary">1) Parse Resume</button>
         <button id="optimizeBtn" class="btn btn-primary">2) Run Advanced Optimization</button>
+        <button id="generateDocxBtn" class="btn btn-success">3) Generate Optimized DOCX</button>
         <div id="status" class="small text-secondary">Waiting for input...</div>
       </div>
 
@@ -70,8 +72,10 @@
 
       const parseBtn = document.getElementById('parseBtn')
       const optimizeBtn = document.getElementById('optimizeBtn')
+      const generateDocxBtn = document.getElementById('generateDocxBtn')
       const savePersonalBtn = document.getElementById('savePersonalBtn')
       const clearPersonalBtn = document.getElementById('clearPersonalBtn')
+      const updateInfoBtn = document.getElementById('updateInfoBtn')
       const personalStatus = document.getElementById('personalStatus')
       const upload = document.getElementById('resumeUpload')
       const jobAdEl = document.getElementById('jobAd')
@@ -102,6 +106,32 @@
         personalInfoEl.value = ''
         personalStatus.textContent = 'Personal info cleared from sync storage.'
         personalStatus.className = 'small text-danger mt-2'
+      })
+
+      updateInfoBtn.addEventListener('click', async () => {
+        if (!parsedResume) {
+          personalStatus.textContent = 'Parse resume first, then update info.'
+          personalStatus.className = 'small text-danger mt-2'
+          return
+        }
+
+        try {
+          const r = await fetch('/api/summarize-personal-info', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ parsedResume }),
+          })
+          const j = await r.json()
+          if (!r.ok) throw new Error(j.error || 'summary failed')
+
+          personalInfoEl.value = (j.snippets || []).map((s) => `- ${s}`).join('\n')
+          localStorage.setItem(PERSONAL_INFO_KEY, personalInfoEl.value)
+          personalStatus.textContent = `Personal info updated from parsed resume (${j.mode}).`
+          personalStatus.className = 'small text-success mt-2'
+        } catch (e) {
+          personalStatus.textContent = e.message
+          personalStatus.className = 'small text-danger mt-2'
+        }
       })
 
       parseBtn.addEventListener('click', async () => {
@@ -160,6 +190,23 @@
             personalStatus.className = 'small text-success mt-2'
           }
           statusEl.textContent = `Optimization complete (${j.mode}).`
+          statusEl.className = 'small text-success'
+        } catch (e) {
+          statusEl.textContent = e.message
+          statusEl.className = 'small text-danger'
+        }
+      })
+
+      generateDocxBtn.addEventListener('click', async () => {
+        statusEl.textContent = 'Generating optimized DOCX...'
+        statusEl.className = 'small text-secondary'
+
+        try {
+          const r = await fetch('/api/generate-optimized-docx', { method: 'POST' })
+          const j = await r.json()
+          if (!r.ok) throw new Error(j.error || 'docx generation failed')
+
+          statusEl.innerHTML = `DOCX generated. <a href="${j.downloadUrl}" target="_blank" rel="noopener">Download ${j.file}</a>`
           statusEl.className = 'small text-success'
         } catch (e) {
           statusEl.textContent = e.message

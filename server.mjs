@@ -3,6 +3,8 @@ import path from 'node:path'
 import express from 'express'
 import multer from 'multer'
 import mammoth from 'mammoth'
+import { execFile } from 'node:child_process'
+import { promisify } from 'node:util'
 import { DatabaseSync } from 'node:sqlite'
 
 const app = express()
@@ -17,9 +19,12 @@ const dbPath = path.resolve('data/job-hunt.db')
 fs.mkdirSync(dataDir, { recursive: true })
 
 const uploadsDir = path.resolve('data/uploads')
+const outputDir = path.resolve('output')
 fs.mkdirSync(uploadsDir, { recursive: true })
+fs.mkdirSync(outputDir, { recursive: true })
 
 const upload = multer({ dest: uploadsDir })
+const execFileAsync = promisify(execFile)
 
 const db = new DatabaseSync(dbPath)
 
@@ -55,6 +60,7 @@ db.exec(`
 
 app.use(express.json({ limit: '1mb' }))
 app.use(express.static(path.resolve('public')))
+app.use('/output', express.static(outputDir))
 
 function extractCompany(jobAd) {
   const m1 = jobAd.match(/(?:at|@)\s+([A-Z][A-Za-z0-9&\- ]{2,})/i)
@@ -188,6 +194,18 @@ Return only the final cover letter text.`
 
 function useLLM() {
   return LLM_MODE && Boolean(OPENAI_API_KEY)
+}
+
+function latestOptimizedDocx() {
+  const files = fs.readdirSync(outputDir)
+    .filter((f) => /^optimized-resume-.*\.docx$/.test(f))
+    .map((f) => ({
+      name: f,
+      full: path.join(outputDir, f),
+      mtime: fs.statSync(path.join(outputDir, f)).mtimeMs,
+    }))
+    .sort((a, b) => b.mtime - a.mtime)
+  return files[0] || null
 }
 
 function parseResumeSections(rawText) {
@@ -404,6 +422,33 @@ app.get('/api/extractions', (_req, res) => {
     .prepare('SELECT id, company, role_title, location, employment_type, created_at FROM job_extractions ORDER BY id DESC LIMIT 50')
     .all()
   res.json(rows)
+})
+
+app.post('/api/generate-optimized-docx', async (_req, res) => {
+  try {
+    await execFileAsync(process.execPath, ['scripts/optimize-resume.mjs'], {
+      cwd: process.cwd(),
+      env: process.env,
+      maxBuffer: 1024 * 1024 * 5,
+    })
+
+    await execFileAsync(process.execPath, ['scripts/export-optimized-docx.mjs'], {
+      cwd: process.cwd(),
+      env: process.env,
+      maxBuffer: 1024 * 1024 * 5,
+    })
+
+    const latest = latestOptimizedDocx()
+    if (!latest) throw new Error('DOCX export did not produce an output file')
+
+    return res.json({
+      ok: true,
+      file: latest.name,
+      downloadUrl: `/output/${latest.name}`,
+    })
+  } catch (err) {
+    return res.status(500).json({ error: err.message })
+  }
 })
 
 app.get('/api/health', (_req, res) => {
