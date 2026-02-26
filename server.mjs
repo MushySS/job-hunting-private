@@ -166,7 +166,7 @@ async function llmExtraction(jobAd) {
   return extractJsonFromText(content)
 }
 
-async function llmCoverLetter({ extraction, sampleCoverLetter, yourName, personalInfo, resumeParsed }) {
+async function llmCoverLetter({ extraction, sampleCoverLetter, yourName, personalInfo, resumeParsed, optimizerSuggestions = [] }) {
   const prompt = `You are Agent B for cover letter tailoring.
 Create a concise professional cover letter for L1 Helpdesk/Service Desk style roles.
 Keep claims truthful and align to ATS keywords.
@@ -184,6 +184,9 @@ ${personalInfo || 'N/A'}
 Parsed resume data to incorporate (if provided):
 ${resumeParsed ? JSON.stringify(resumeParsed, null, 2) : 'N/A'}
 
+Optimizer suggestions to incorporate if relevant:
+${Array.isArray(optimizerSuggestions) && optimizerSuggestions.length ? optimizerSuggestions.join(' | ') : 'N/A'}
+
 Return only the final cover letter text.`
 
   return callOpenAI([
@@ -199,6 +202,18 @@ function useLLM() {
 function latestOptimizedDocx() {
   const files = fs.readdirSync(outputDir)
     .filter((f) => /^optimized-resume-.*\.docx$/.test(f))
+    .map((f) => ({
+      name: f,
+      full: path.join(outputDir, f),
+      mtime: fs.statSync(path.join(outputDir, f)).mtimeMs,
+    }))
+    .sort((a, b) => b.mtime - a.mtime)
+  return files[0] || null
+}
+
+function latestOptimizedMd() {
+  const files = fs.readdirSync(outputDir)
+    .filter((f) => /^optimized-resume-.*\.md$/.test(f))
     .map((f) => ({
       name: f,
       full: path.join(outputDir, f),
@@ -447,6 +462,122 @@ app.post('/api/generate-optimized-docx', async (req, res) => {
       ok: true,
       file: latest.name,
       downloadUrl: `/output/${latest.name}`,
+    })
+  } catch (err) {
+    return res.status(500).json({ error: err.message })
+  }
+})
+
+app.post('/api/generate-application-package', upload.single('resume'), async (req, res) => {
+  try {
+    const {
+      jobAd = '',
+      sampleCoverLetter = '',
+      personalInfo = '',
+      specialInstructions = '',
+      yourName = '[MY NAME]',
+    } = req.body || {}
+
+    if (!jobAd.trim()) return res.status(400).json({ error: 'jobAd is required' })
+    if (!sampleCoverLetter.trim()) return res.status(400).json({ error: 'sampleCoverLetter is required' })
+    if (!req.file) return res.status(400).json({ error: 'resume file is required (field name: resume)' })
+
+    const ext = path.extname(req.file.originalname || '').toLowerCase()
+    if (ext === '.doc') {
+      return res.status(400).json({ error: 'Please upload .docx (legacy .doc not supported reliably).' })
+    }
+
+    const { value } = await mammoth.extractRawText({ path: req.file.path })
+    const parsedResume = parseResumeSections(value || '')
+
+    // Agent A extraction
+    const extraction = useLLM() ? await llmExtraction(jobAd) : fallbackExtraction(jobAd)
+    const stmt = db.prepare(`
+      INSERT INTO job_extractions (
+        company, role_title, location, employment_type, seniority,
+        must_have_skills, nice_to_have_skills, tools_tech_mentioned,
+        responsibilities, keywords_for_ats, selection_criteria, notes, source_job_ad
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `)
+    const info = stmt.run(
+      extraction.company || '',
+      extraction.role_title || '',
+      extraction.location || '',
+      extraction.employment_type || '',
+      extraction.seniority || '',
+      JSON.stringify(extraction.must_have_skills || []),
+      JSON.stringify(extraction.nice_to_have_skills || []),
+      JSON.stringify(extraction.tools_tech_mentioned || []),
+      JSON.stringify(extraction.responsibilities || []),
+      JSON.stringify(extraction.keywords_for_ats || []),
+      JSON.stringify(extraction.selection_criteria || []),
+      extraction.notes || '',
+      jobAd,
+    )
+    const extractionId = Number(info.lastInsertRowid)
+
+    // Advanced suggestions
+    const webResults = await ddgLiteSearch(`helpdesk resume improvements ${jobAd.slice(0, 120)}`)
+    let optimizerSuggestions = []
+    if (useLLM()) {
+      const suggPrompt = `Given this input JSON, return ONLY JSON: {"suggestions":["..."],"matchedSkills":["..."],"gaps":["..."]}\nInput:\n${JSON.stringify({ jobAd, personalInfo, parsedResume, webResults, specialInstructions }, null, 2)}`
+      const raw = await callOpenAI([
+        { role: 'system', content: 'You produce concise ATS resume optimization advice for helpdesk roles.' },
+        { role: 'user', content: suggPrompt },
+      ], 0.2)
+      const parsed = extractJsonFromText(raw)
+      optimizerSuggestions = Array.isArray(parsed.suggestions) ? parsed.suggestions : []
+    } else {
+      optimizerSuggestions = [
+        'Use ATS keywords from the ad in summary and experience bullets.',
+        'Highlight customer service, ticket ownership, and troubleshooting outcomes.',
+      ]
+    }
+
+    // Agent B cover letter
+    const coverLetter = useLLM()
+      ? await llmCoverLetter({ extraction, sampleCoverLetter, yourName, personalInfo, resumeParsed: parsedResume, optimizerSuggestions })
+      : `${sampleCoverLetter}\n\nAdditional context: ${personalInfo}`
+
+    const save = db.prepare(`
+      INSERT INTO cover_letters (extraction_id, company, role_title, letter_text)
+      VALUES (?, ?, ?, ?)
+    `)
+    const letterInfo = save.run(extractionId, extraction.company || '', extraction.role_title || '', coverLetter)
+
+    // Resume optimize + DOCX export
+    await execFileAsync(process.execPath, ['scripts/optimize-resume.mjs'], {
+      cwd: process.cwd(),
+      env: {
+        ...process.env,
+        SPECIAL_INSTRUCTIONS: specialInstructions,
+        PERSONAL_INFO: personalInfo,
+        OPTIMIZER_SUGGESTIONS: optimizerSuggestions.join(' | '),
+      },
+      maxBuffer: 1024 * 1024 * 8,
+    })
+
+    await execFileAsync(process.execPath, ['scripts/export-optimized-docx.mjs'], {
+      cwd: process.cwd(),
+      env: process.env,
+      maxBuffer: 1024 * 1024 * 8,
+    })
+
+    const latestDocx = latestOptimizedDocx()
+    const latestMd = latestOptimizedMd()
+
+    return res.json({
+      ok: true,
+      mode: useLLM() ? 'llm' : 'fallback',
+      extractionId,
+      letterId: Number(letterInfo.lastInsertRowid),
+      extraction,
+      parsedResume,
+      optimizerSuggestions,
+      coverLetter,
+      optimizedResumeMarkdown: latestMd ? `/output/${latestMd.name}` : null,
+      optimizedResumeDocx: latestDocx ? `/output/${latestDocx.name}` : null,
+      webResults,
     })
   } catch (err) {
     return res.status(500).json({ error: err.message })

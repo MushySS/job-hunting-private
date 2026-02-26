@@ -3,136 +3,83 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Job Hunt Portal</title>
+    <title>Job Hunt Workspace (Unified)</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" />
     <style>
       body { background: #f6f8fb; }
-      .card { border: 0; border-radius: 1rem; }
-      textarea { min-height: 240px; resize: vertical; }
-      .upload-box {
-        border: 2px dashed #0d6efd;
-        border-radius: 0.9rem;
-        background: #eef4ff;
-        padding: 1.25rem;
-      }
-      #tailoredOutput, #jsonOutput {
-        min-height: 220px;
-        white-space: pre-wrap;
-        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-      }
+      textarea { min-height: 180px; resize: vertical; }
+      pre { white-space: pre-wrap; }
     </style>
   </head>
   <body>
-    <main class="container py-5">
-      <div class="mb-4 text-center">
-        <h1 class="fw-bold">Job Hunting Workspace — Phase 3</h1>
-        <p class="text-secondary mb-0">Two-agent flow: (1) Extract Job JSON, (2) Generate tailored cover letter.</p>
-        <a class="btn btn-outline-secondary btn-sm mt-2" href="/resume-optimizer.html">Open Advanced Resume Optimizer Page</a>
-      </div>
+    <main class="container py-4">
+      <h1 class="h3 mb-1">Job Hunt Workspace (Unified)</h1>
+      <p class="text-secondary">One-page flow: personal info + job ad + resume + notes → optimized resume + tailored cover letter.</p>
 
-      <div class="row g-4">
+      <div class="row g-3">
         <div class="col-lg-6">
-          <div class="card shadow-sm">
-            <div class="card-body">
-              <h5 class="card-title">Job Ad</h5>
-              <label for="jobAd" class="form-label text-secondary small">Paste the full job listing here</label>
-              <textarea id="jobAd" class="form-control" placeholder="Paste job ad text..."></textarea>
-            </div>
-          </div>
+          <label class="form-label">Job Ad</label>
+          <textarea id="jobAd" class="form-control" placeholder="Paste the full job ad"></textarea>
         </div>
-
         <div class="col-lg-6">
-          <div class="card shadow-sm">
-            <div class="card-body">
-              <h5 class="card-title">Sample Cover Letter</h5>
-              <label for="sampleLetter" class="form-label text-secondary small">Paste your base/sample cover letter here</label>
-              <textarea id="sampleLetter" class="form-control" placeholder="Paste sample cover letter..."></textarea>
-            </div>
-          </div>
+          <label class="form-label">Sample Cover Letter</label>
+          <textarea id="sampleCoverLetter" class="form-control" placeholder="Paste your base cover letter"></textarea>
         </div>
-      </div>
-
-      <div class="row mt-4 g-4">
         <div class="col-lg-6">
-          <div class="card shadow-sm h-100">
-            <div class="card-body">
-              <h5 class="card-title">Personal Information (persistent)</h5>
-              <label for="personalInfo" class="form-label text-secondary small">This is saved in your browser and reused on reload.</label>
-              <textarea id="personalInfo" class="form-control" placeholder="Paste your personal info, strengths, certifications, experience highlights..."></textarea>
-              <div class="d-flex gap-2 mt-3 flex-wrap">
-                <button id="savePersonalBtn" class="btn btn-success btn-sm">Save</button>
-                <button id="clearPersonalBtn" class="btn btn-outline-danger btn-sm">Clear</button>
-                <button id="applyResumeBtn" class="btn btn-outline-primary btn-sm">Apply Parsed Resume → Personal Info</button>
-              </div>
-              <p id="personalStatus" class="small text-secondary mt-2 mb-0">No saved personal info yet.</p>
-            </div>
+          <label class="form-label">Personal Info (synced)</label>
+          <textarea id="personalInfo" class="form-control" placeholder="Your profile, skills, certs, achievements"></textarea>
+          <div class="mt-2 d-flex gap-2 flex-wrap">
+            <button id="saveInfoBtn" class="btn btn-success btn-sm">Save</button>
+            <button id="clearInfoBtn" class="btn btn-outline-danger btn-sm">Clear</button>
+            <button id="updateInfoBtn" class="btn btn-outline-primary btn-sm">Update Info from Parsed Resume</button>
           </div>
+          <div id="infoStatus" class="small text-secondary mt-2">Ready</div>
         </div>
-
         <div class="col-lg-6">
-          <div class="card shadow-sm h-100">
-            <div class="card-body">
-              <h5 class="card-title">Upload Resume (Word)</h5>
-              <div class="upload-box">
-                <label for="resumeUpload" class="form-label fw-semibold">Select resume file (.doc, .docx)</label>
-                <input
-                  id="resumeUpload"
-                  type="file"
-                  class="form-control"
-                  accept=".doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                />
-                <p id="fileStatus" class="mt-2 text-secondary small mb-0">No file selected.</p>
-              </div>
-              <div class="d-flex gap-2 mt-3">
-                <button id="parseResumeBtn" class="btn btn-outline-secondary btn-sm">Parse Resume (Phase 3)</button>
-              </div>
-              <p class="text-secondary small mt-3 mb-0">Tip: .docx works best for extraction.</p>
-            </div>
-          </div>
+          <label class="form-label">Special Instructions (for LLM)</label>
+          <textarea id="specialInstructions" class="form-control" placeholder="e.g. Keep concise, prioritize KPI outcomes, avoid adding technologies not in resume"></textarea>
+          <label class="form-label mt-3">Upload Old Resume (.docx recommended)</label>
+          <input id="resumeUpload" type="file" class="form-control" accept=".doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" />
+          <div id="fileStatus" class="small text-secondary mt-2">No file selected</div>
         </div>
       </div>
 
-      <div class="row mt-4 g-4">
-        <div class="col-12">
-          <div class="card shadow-sm h-100">
-            <div class="card-body">
-              <h5 class="card-title">Agent Controls</h5>
-              <div class="d-grid gap-2">
-                <button id="extractBtn" class="btn btn-outline-primary">1) Extract Job JSON (Agent A)</button>
-                <button id="generateBtn" class="btn btn-primary">2) Generate Tailored Letter (Agent B)</button>
-              </div>
-              <div id="status" class="small text-secondary mt-3">Waiting for input...</div>
-            </div>
-          </div>
-        </div>
+      <div class="mt-4 d-grid gap-2">
+        <button id="parseResumeBtn" class="btn btn-outline-secondary">1) Parse Resume</button>
+        <button id="generateAllBtn" class="btn btn-primary">2) Generate Optimized Resume + Cover Letter</button>
+        <div id="status" class="small text-secondary">Waiting for input...</div>
       </div>
 
-      <div class="row mt-4 g-4">
+      <div class="row g-3 mt-2">
         <div class="col-lg-6">
-          <div class="card shadow-sm">
+          <div class="card border-0 shadow-sm">
             <div class="card-body">
-              <h5 class="card-title">Extracted Job JSON</h5>
-              <pre id="jsonOutput" class="form-control"></pre>
+              <h2 class="h6">Parsed Resume JSON</h2>
+              <pre id="parsedResumeOut" class="form-control" style="min-height:180px"></pre>
             </div>
           </div>
         </div>
-
         <div class="col-lg-6">
-          <div class="card shadow-sm">
+          <div class="card border-0 shadow-sm">
             <div class="card-body">
-              <h5 class="card-title">Tailored Cover Letter</h5>
-              <pre id="tailoredOutput" class="form-control"></pre>
+              <h2 class="h6">Extracted Job JSON</h2>
+              <pre id="extractionOut" class="form-control" style="min-height:180px"></pre>
             </div>
           </div>
         </div>
-      </div>
-
-      <div class="row mt-4">
-        <div class="col-12">
-          <div class="card shadow-sm">
+        <div class="col-lg-6">
+          <div class="card border-0 shadow-sm">
             <div class="card-body">
-              <h5 class="card-title">Parsed Resume JSON</h5>
-              <pre id="resumeOutput" class="form-control"></pre>
+              <h2 class="h6">Optimizer Suggestions</h2>
+              <pre id="suggestionsOut" class="form-control" style="min-height:180px"></pre>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-6">
+          <div class="card border-0 shadow-sm">
+            <div class="card-body">
+              <h2 class="h6">Tailored Cover Letter</h2>
+              <pre id="coverLetterOut" class="form-control" style="min-height:180px"></pre>
             </div>
           </div>
         </div>
@@ -142,193 +89,149 @@
     <script>
       const PERSONAL_INFO_KEY = 'job-hunt-personal-info-v1'
 
-      const uploadInput = document.getElementById('resumeUpload')
+      const jobAdEl = document.getElementById('jobAd')
+      const sampleEl = document.getElementById('sampleCoverLetter')
+      const personalInfoEl = document.getElementById('personalInfo')
+      const specialEl = document.getElementById('specialInstructions')
+      const uploadEl = document.getElementById('resumeUpload')
       const fileStatus = document.getElementById('fileStatus')
-      const extractBtn = document.getElementById('extractBtn')
-      const generateBtn = document.getElementById('generateBtn')
-      const parseResumeBtn = document.getElementById('parseResumeBtn')
-      const savePersonalBtn = document.getElementById('savePersonalBtn')
-      const clearPersonalBtn = document.getElementById('clearPersonalBtn')
-      const applyResumeBtn = document.getElementById('applyResumeBtn')
-      const personalInfoInput = document.getElementById('personalInfo')
-      const personalStatus = document.getElementById('personalStatus')
-
-      const jobAdInput = document.getElementById('jobAd')
-      const sampleLetterInput = document.getElementById('sampleLetter')
-      const jsonOutput = document.getElementById('jsonOutput')
-      const tailoredOutput = document.getElementById('tailoredOutput')
-      const resumeOutput = document.getElementById('resumeOutput')
       const statusEl = document.getElementById('status')
+      const infoStatus = document.getElementById('infoStatus')
+      const parsedOut = document.getElementById('parsedResumeOut')
+      const extractionOut = document.getElementById('extractionOut')
+      const suggestionsOut = document.getElementById('suggestionsOut')
+      const coverLetterOut = document.getElementById('coverLetterOut')
 
-      let latestExtractionId = null
-      let parsedResumeData = null
+      const saveInfoBtn = document.getElementById('saveInfoBtn')
+      const clearInfoBtn = document.getElementById('clearInfoBtn')
+      const updateInfoBtn = document.getElementById('updateInfoBtn')
+      const parseResumeBtn = document.getElementById('parseResumeBtn')
+      const generateAllBtn = document.getElementById('generateAllBtn')
 
-      function loadPersonalInfo() {
+      let parsedResume = null
+
+      function loadInfo() {
         const saved = localStorage.getItem(PERSONAL_INFO_KEY)
-        if (saved) {
-          personalInfoInput.value = saved
-          personalStatus.textContent = 'Loaded saved personal info from browser storage.'
-          personalStatus.className = 'small text-success mt-2 mb-0'
-        }
+        if (saved) personalInfoEl.value = saved
       }
 
-      savePersonalBtn.addEventListener('click', () => {
-        localStorage.setItem(PERSONAL_INFO_KEY, personalInfoInput.value || '')
-        personalStatus.textContent = 'Personal info saved.'
-        personalStatus.className = 'small text-success mt-2 mb-0'
+      saveInfoBtn.addEventListener('click', () => {
+        localStorage.setItem(PERSONAL_INFO_KEY, personalInfoEl.value || '')
+        infoStatus.textContent = 'Saved personal info.'
+        infoStatus.className = 'small text-success mt-2'
       })
 
-      clearPersonalBtn.addEventListener('click', () => {
+      clearInfoBtn.addEventListener('click', () => {
         localStorage.removeItem(PERSONAL_INFO_KEY)
-        personalInfoInput.value = ''
-        personalStatus.textContent = 'Personal info cleared.'
-        personalStatus.className = 'small text-danger mt-2 mb-0'
+        personalInfoEl.value = ''
+        infoStatus.textContent = 'Cleared personal info.'
+        infoStatus.className = 'small text-danger mt-2'
       })
 
-      applyResumeBtn.addEventListener('click', async () => {
-        if (!parsedResumeData) {
-          personalStatus.textContent = 'Parse your resume first, then apply.'
-          personalStatus.className = 'small text-danger mt-2 mb-0'
-          return
-        }
-
-        try {
-          const resp = await fetch('/api/summarize-personal-info', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ parsedResume: parsedResumeData }),
-          })
-          const data = await resp.json()
-          if (!resp.ok) throw new Error(data.error || 'Could not summarize resume')
-
-          const merged = [
-            personalInfoInput.value.trim(),
-            ...(data.snippets || []),
-          ].filter(Boolean).join('\n- ')
-
-          personalInfoInput.value = merged.startsWith('- ') ? merged : (merged ? `- ${merged}` : '')
-          localStorage.setItem(PERSONAL_INFO_KEY, personalInfoInput.value)
-
-          personalStatus.textContent = `Personal info updated from parsed resume (${data.mode}).`
-          personalStatus.className = 'small text-success mt-2 mb-0'
-        } catch (err) {
-          personalStatus.textContent = `Could not apply parsed resume: ${err.message}`
-          personalStatus.className = 'small text-danger mt-2 mb-0'
-        }
-      })
-
-      uploadInput.addEventListener('change', (e) => {
-        const file = e.target.files?.[0]
-        fileStatus.textContent = file
-          ? `Selected: ${file.name} (${Math.round(file.size / 1024)} KB)`
-          : 'No file selected.'
+      uploadEl.addEventListener('change', () => {
+        const f = uploadEl.files?.[0]
+        fileStatus.textContent = f ? `Selected: ${f.name} (${Math.round(f.size/1024)} KB)` : 'No file selected'
       })
 
       parseResumeBtn.addEventListener('click', async () => {
-        const file = uploadInput.files?.[0]
-        if (!file) {
-          statusEl.className = 'small text-danger mt-3'
-          statusEl.textContent = 'Please upload a .docx resume first.'
+        const f = uploadEl.files?.[0]
+        if (!f) {
+          statusEl.textContent = 'Upload resume first.'
+          statusEl.className = 'small text-danger'
           return
         }
-
-        statusEl.className = 'small text-secondary mt-3'
         statusEl.textContent = 'Parsing resume...'
+        statusEl.className = 'small text-secondary'
+
+        const form = new FormData()
+        form.append('resume', f)
 
         try {
-          const form = new FormData()
-          form.append('resume', file)
-
-          const resp = await fetch('/api/parse-resume', {
-            method: 'POST',
-            body: form,
-          })
-          const data = await resp.json()
-          if (!resp.ok) throw new Error(data.error || 'Resume parse failed')
-
-          parsedResumeData = data.parsed
-          resumeOutput.textContent = JSON.stringify(data.parsed, null, 2)
-          statusEl.className = 'small text-success mt-3'
-          statusEl.textContent = `Resume parsed: ${data.filename}`
-        } catch (err) {
-          statusEl.className = 'small text-danger mt-3'
-          statusEl.textContent = `Resume parse error: ${err.message}`
+          const r = await fetch('/api/parse-resume', { method: 'POST', body: form })
+          const j = await r.json()
+          if (!r.ok) throw new Error(j.error || 'parse failed')
+          parsedResume = j.parsed
+          parsedOut.textContent = JSON.stringify(j.parsed, null, 2)
+          statusEl.textContent = 'Resume parsed.'
+          statusEl.className = 'small text-success'
+        } catch (e) {
+          statusEl.textContent = e.message
+          statusEl.className = 'small text-danger'
         }
       })
 
-      extractBtn.addEventListener('click', async () => {
-        const jobAd = jobAdInput.value.trim()
-        if (!jobAd) {
-          statusEl.className = 'small text-danger mt-3'
-          statusEl.textContent = 'Please paste a job ad first.'
+      updateInfoBtn.addEventListener('click', async () => {
+        if (!parsedResume) {
+          infoStatus.textContent = 'Parse resume first.'
+          infoStatus.className = 'small text-danger mt-2'
           return
         }
-
-        statusEl.className = 'small text-secondary mt-3'
-        statusEl.textContent = 'Running Agent A extraction...'
-
         try {
-          const resp = await fetch('/api/extract-job', {
+          const r = await fetch('/api/summarize-personal-info', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ jobAd }),
+            body: JSON.stringify({ parsedResume }),
           })
-          const data = await resp.json()
-          if (!resp.ok) throw new Error(data.error || 'Extraction failed')
-
-          latestExtractionId = data.extractionId
-          jsonOutput.textContent = JSON.stringify(data.extraction, null, 2)
-          statusEl.className = 'small text-success mt-3'
-          statusEl.textContent = `Agent A complete (${data.mode}). extractionId=${latestExtractionId}`
-        } catch (err) {
-          statusEl.className = 'small text-danger mt-3'
-          statusEl.textContent = `Extraction error: ${err.message}`
+          const j = await r.json()
+          if (!r.ok) throw new Error(j.error || 'summary failed')
+          personalInfoEl.value = (j.snippets || []).map((s) => `- ${s}`).join('\n')
+          localStorage.setItem(PERSONAL_INFO_KEY, personalInfoEl.value)
+          infoStatus.textContent = `Updated from parsed resume (${j.mode}).`
+          infoStatus.className = 'small text-success mt-2'
+        } catch (e) {
+          infoStatus.textContent = e.message
+          infoStatus.className = 'small text-danger mt-2'
         }
       })
 
-      generateBtn.addEventListener('click', async () => {
-        const sampleCoverLetter = sampleLetterInput.value.trim()
-        const personalInfo = personalInfoInput.value.trim()
-
-        if (!latestExtractionId) {
-          statusEl.className = 'small text-danger mt-3'
-          statusEl.textContent = 'Run Agent A first (extract job JSON).'
+      generateAllBtn.addEventListener('click', async () => {
+        const f = uploadEl.files?.[0]
+        if (!f) {
+          statusEl.textContent = 'Upload resume first.'
+          statusEl.className = 'small text-danger'
           return
         }
-        if (!sampleCoverLetter) {
-          statusEl.className = 'small text-danger mt-3'
-          statusEl.textContent = 'Please paste your sample cover letter.'
+        if (!jobAdEl.value.trim() || !sampleEl.value.trim()) {
+          statusEl.textContent = 'Job ad and sample cover letter are required.'
+          statusEl.className = 'small text-danger'
           return
         }
 
-        statusEl.className = 'small text-secondary mt-3'
-        statusEl.textContent = 'Running Agent B letter generation...'
+        statusEl.textContent = 'Generating package (resume + cover letter)...'
+        statusEl.className = 'small text-secondary'
+
+        const form = new FormData()
+        form.append('resume', f)
+        form.append('jobAd', jobAdEl.value)
+        form.append('sampleCoverLetter', sampleEl.value)
+        form.append('personalInfo', personalInfoEl.value)
+        form.append('specialInstructions', specialEl.value)
+        form.append('yourName', '[MY NAME]')
 
         try {
-          const resp = await fetch('/api/generate-letter', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              extractionId: latestExtractionId,
-              sampleCoverLetter,
-              yourName: '[MY NAME]',
-              personalInfo,
-              resumeParsed: parsedResumeData,
-            }),
-          })
-          const data = await resp.json()
-          if (!resp.ok) throw new Error(data.error || 'Generation failed')
+          const r = await fetch('/api/generate-application-package', { method: 'POST', body: form })
+          const j = await r.json()
+          if (!r.ok) throw new Error(j.error || 'generation failed')
 
-          tailoredOutput.textContent = data.coverLetter
-          statusEl.className = 'small text-success mt-3'
-          statusEl.textContent = `Agent B complete (${data.mode}). letterId=${data.letterId}`
-        } catch (err) {
-          statusEl.className = 'small text-danger mt-3'
-          statusEl.textContent = `Generation error: ${err.message}`
+          parsedResume = j.parsedResume
+          parsedOut.textContent = JSON.stringify(j.parsedResume, null, 2)
+          extractionOut.textContent = JSON.stringify(j.extraction, null, 2)
+          suggestionsOut.textContent = JSON.stringify(j.optimizerSuggestions || [], null, 2)
+          coverLetterOut.textContent = j.coverLetter || ''
+
+          const links = []
+          if (j.optimizedResumeDocx) links.push(`<a href="${j.optimizedResumeDocx}" target="_blank">Download Optimized DOCX</a>`)
+          if (j.optimizedResumeMarkdown) links.push(`<a href="${j.optimizedResumeMarkdown}" target="_blank">View Optimized Markdown</a>`)
+
+          statusEl.innerHTML = `Done (${j.mode}). ${links.join(' | ')}`
+          statusEl.className = 'small text-success'
+        } catch (e) {
+          statusEl.textContent = e.message
+          statusEl.className = 'small text-danger'
         }
       })
 
-      loadPersonalInfo()
+      loadInfo()
     </script>
   </body>
 </html>
