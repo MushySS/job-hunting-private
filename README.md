@@ -1,18 +1,38 @@
-# Job Hunt Portal
+# Job Hunt Portal (Phase 2)
 
-Basic frontend website for job application prep.
+Express + SQLite implementation of a two-agent pipeline:
+
+1. **Agent A** — Extract job ad into structured JSON and store in SQLite
+2. **Agent B** — Generate tailored cover letter using extracted JSON + sample cover letter
 
 ## Features
-- Left textbox: Job ad input
-- Right textbox: Sample cover letter input
-- Upload area: Resume Word file (`.doc` / `.docx`)
 
-## Run
-Open `index.html` in a browser.
+- Job ad textbox
+- Sample cover letter textbox
+- Resume upload field (`.doc`/`.docx`, currently selection only)
+- `Extract Job JSON` button (calls `/api/extract-job`)
+- `Generate Tailored Letter` button (calls `/api/generate-letter`)
+- Stores extractions and generated letters in `data/job-hunt.db`
 
-## Deploy (GitHub Pages)
-This repo includes `.github/workflows/deploy-pages.yml`.
-Any push to `main` triggers automatic deploy to GitHub Pages.
+## Run locally
 
-## Notes
-This is frontend-only for now; uploaded files are not sent anywhere unless a backend is added later.
+```bash
+npm install
+npm run db:init
+npm start
+```
+
+Open: `http://localhost:3000`
+
+## API endpoints
+
+- `POST /api/extract-job`
+  - body: `{ "jobAd": "..." }`
+- `POST /api/generate-letter`
+  - body: `{ "extractionId": 1, "sampleCoverLetter": "...", "yourName": "Your Name" }`
+- `GET /api/extractions`
+
+## Deployment note
+
+This Phase 2 version needs a Node server + SQLite, so it **cannot run on GitHub Pages alone**.
+Use a backend host (Render/Railway/Fly.io/etc.) for production.
