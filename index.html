@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Job Hunt Portal</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <style>
+      body { background: #f6f8fb; }
+      .card { border: 0; border-radius: 1rem; }
+      textarea { min-height: 360px; resize: vertical; }
+      .upload-box {
+        border: 2px dashed #0d6efd;
+        border-radius: 0.9rem;
+        background: #eef4ff;
+        padding: 1.25rem;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="container py-5">
+      <div class="mb-4 text-center">
+        <h1 class="fw-bold">Job Hunting Workspace</h1>
+        <p class="text-secondary mb-0">Paste job ad + sample cover letter, then upload your resume (.doc/.docx).</p>
+      </div>
+
+      <div class="row g-4">
+        <div class="col-lg-6">
+          <div class="card shadow-sm">
+            <div class="card-body">
+              <h5 class="card-title">Job Ad</h5>
+              <label for="jobAd" class="form-label text-secondary small">Paste the full job listing here</label>
+              <textarea id="jobAd" class="form-control" placeholder="Paste job ad text..."></textarea>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-lg-6">
+          <div class="card shadow-sm">
+            <div class="card-body">
+              <h5 class="card-title">Sample Cover Letter</h5>
+              <label for="sampleLetter" class="form-label text-secondary small">Paste your base/sample cover letter here</label>
+              <textarea id="sampleLetter" class="form-control" placeholder="Paste sample cover letter..."></textarea>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row mt-4">
+        <div class="col-12">
+          <div class="card shadow-sm">
+            <div class="card-body">
+              <h5 class="card-title">Upload Resume (Word)</h5>
+              <div class="upload-box">
+                <label for="resumeUpload" class="form-label fw-semibold">Select resume file (.doc, .docx)</label>
+                <input
+                  id="resumeUpload"
+                  type="file"
+                  class="form-control"
+                  accept=".doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                />
+                <p id="fileStatus" class="mt-2 text-secondary small mb-0">No file selected.</p>
+              </div>
+              <p class="text-secondary small mt-3 mb-0">
+                Note: This is a frontend-only page. The uploaded file stays in your browser unless a backend is added.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <script>
+      const uploadInput = document.getElementById('resumeUpload')
+      const fileStatus = document.getElementById('fileStatus')
+
+      uploadInput.addEventListener('change', (e) => {
+        const file = e.target.files?.[0]
+        if (!file) {
+          fileStatus.textContent = 'No file selected.'
+          return
+        }
+        fileStatus.textContent = `Selected: ${file.name} (${Math.round(file.size / 1024)} KB)`
+      })
+    </script>
+  </body>
+</html>
