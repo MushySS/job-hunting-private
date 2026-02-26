@@ -8,12 +8,16 @@
     <style>
       body { background: #f6f8fb; }
       .card { border: 0; border-radius: 1rem; }
-      textarea { min-height: 360px; resize: vertical; }
+      textarea { min-height: 320px; resize: vertical; }
       .upload-box {
         border: 2px dashed #0d6efd;
         border-radius: 0.9rem;
         background: #eef4ff;
         padding: 1.25rem;
+      }
+      #tailoredOutput {
+        min-height: 260px;
+        white-space: pre-wrap;
       }
     </style>
   </head>
@@ -46,9 +50,9 @@
         </div>
       </div>
 
-      <div class="row mt-4">
-        <div class="col-12">
-          <div class="card shadow-sm">
+      <div class="row mt-4 g-4">
+        <div class="col-lg-6">
+          <div class="card shadow-sm h-100">
             <div class="card-body">
               <h5 class="card-title">Upload Resume (Word)</h5>
               <div class="upload-box">
@@ -62,8 +66,30 @@
                 <p id="fileStatus" class="mt-2 text-secondary small mb-0">No file selected.</p>
               </div>
               <p class="text-secondary small mt-3 mb-0">
-                Note: This is a frontend-only page. The uploaded file stays in your browser unless a backend is added.
+                Note: Frontend-only mode. Upload is local for now and not yet parsed.
               </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-lg-6">
+          <div class="card shadow-sm h-100">
+            <div class="card-body d-flex flex-column">
+              <h5 class="card-title">Generate Tailored Letter</h5>
+              <p class="text-secondary small">Click submit to tailor your cover letter based on job ad keywords.</p>
+              <button id="submitBtn" class="btn btn-primary w-100 mb-3">Submit & Tailor Cover Letter</button>
+              <div id="tailorStatus" class="small text-secondary">Waiting for input...</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row mt-4">
+        <div class="col-12">
+          <div class="card shadow-sm">
+            <div class="card-body">
+              <h5 class="card-title">Tailored Cover Letter (Preview)</h5>
+              <div id="tailoredOutput" class="form-control"></div>
             </div>
           </div>
         </div>
@@ -73,6 +99,16 @@
     <script>
       const uploadInput = document.getElementById('resumeUpload')
       const fileStatus = document.getElementById('fileStatus')
+      const submitBtn = document.getElementById('submitBtn')
+      const jobAdInput = document.getElementById('jobAd')
+      const sampleLetterInput = document.getElementById('sampleLetter')
+      const tailoredOutput = document.getElementById('tailoredOutput')
+      const tailorStatus = document.getElementById('tailorStatus')
+
+      const keywordBank = [
+        'Active Directory', 'Office 365', 'Windows', 'TCP/IP', 'LAN', 'WAN',
+        'ticket', 'helpdesk', 'service desk', 'customer service', 'KPI', 'troubleshoot'
+      ]
 
       uploadInput.addEventListener('change', (e) => {
         const file = e.target.files?.[0]
@@ -81,6 +117,55 @@
           return
         }
         fileStatus.textContent = `Selected: ${file.name} (${Math.round(file.size / 1024)} KB)`
+      })
+
+      function extractCompany(jobAd) {
+        const atMatch = jobAd.match(/(?:at|@)\s+([A-Z][A-Za-z0-9&\- ]{2,})/i)
+        if (atMatch?.[1]) return atMatch[1].trim()
+        const aboutMatch = jobAd.match(/About\s+([A-Z][A-Za-z0-9&\- ]{2,})/i)
+        if (aboutMatch?.[1]) return aboutMatch[1].trim()
+        return 'the company'
+      }
+
+      function extractRole(jobAd) {
+        const roleMatch = jobAd.match(/(?:role|position|job ad for)[:\s]+([A-Za-z0-9 &\-/]{6,80})/i)
+        if (roleMatch?.[1]) return roleMatch[1].trim()
+        if (/helpdesk|service desk/i.test(jobAd)) return 'Helpdesk / Service Desk role'
+        return 'this role'
+      }
+
+      function detectKeywords(jobAd) {
+        const text = jobAd.toLowerCase()
+        return keywordBank.filter((k) => text.includes(k.toLowerCase()))
+      }
+
+      submitBtn.addEventListener('click', () => {
+        const jobAd = jobAdInput.value.trim()
+        const sample = sampleLetterInput.value.trim()
+
+        if (!jobAd || !sample) {
+          tailorStatus.textContent = 'Please fill both Job Ad and Sample Cover Letter first.'
+          tailorStatus.className = 'small text-danger'
+          return
+        }
+
+        const company = extractCompany(jobAd)
+        const role = extractRole(jobAd)
+        const keywords = detectKeywords(jobAd)
+
+        let output = sample
+          .replaceAll('[COMPANY NAME]', company)
+          .replace(/Level 1 IT Support Technician/gi, role)
+
+        const keywordLine = keywords.length
+          ? `\n\nI am especially prepared to support environments and workflows involving ${keywords.join(', ')}, and to align with your service expectations from day one.`
+          : '\n\nI am prepared to align quickly with your team workflows, support tools, and service expectations from day one.'
+
+        output += keywordLine
+
+        tailoredOutput.textContent = output
+        tailorStatus.textContent = `Tailored draft generated for ${company}. Review and edit before sending.`
+        tailorStatus.className = 'small text-success'
       })
     </script>
   </body>
