@@ -42,6 +42,18 @@ Quick check:
 curl http://localhost:3000/api/health
 ```
 
+## Resume optimization scripts
+
+```bash
+# Generate optimized resume markdown (LLM + job ad + web context)
+npm run resume:optimize
+
+# Export optimized content back into DOCX while preserving original structure/styles as much as possible
+npm run resume:export-docx
+```
+
+Output files are written to `output/`.
+
 ## API endpoints
 
 - `POST /api/parse-resume`

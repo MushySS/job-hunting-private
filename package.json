@@ -6,11 +6,16 @@
   "scripts": {
     "start": "node server.mjs",
     "dev": "node --watch server.mjs",
-    "db:init": "node scripts/init-db.mjs"
+    "db:init": "node scripts/init-db.mjs",
+    "resume:optimize": "node scripts/optimize-resume.mjs",
+    "resume:export-docx": "node scripts/export-optimized-docx.mjs"
   },
   "dependencies": {
+    "@xmldom/xmldom": "^0.8.11",
     "express": "^4.21.2",
+    "jszip": "^3.10.1",
     "mammoth": "^1.11.0",
-    "multer": "^2.0.2"
+    "multer": "^2.0.2",
+    "xpath": "^0.0.34"
   }
 }
