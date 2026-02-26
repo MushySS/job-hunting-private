@@ -1,0 +1,115 @@
+{
+  "strictMode": true,
+  "headingModeUsed": "strict-fallback-heuristic",
+  "protectedHeadings": [],
+  "replaced": 24,
+  "missingSections": [
+    "EDUCATION & QUALIFICATIONS"
+  ],
+  "sections": [
+    {
+      "heading": "",
+      "key": "__root__",
+      "protected": false,
+      "slots": 2,
+      "listSlots": 0,
+      "nonListSlots": 2,
+      "sourceLines": 0,
+      "sourceBodyLines": 0,
+      "sourceBulletLines": 0,
+      "replaced": 0,
+      "overflowDropped": 0
+    },
+    {
+      "heading": "PROFILE",
+      "key": "profile",
+      "protected": false,
+      "slots": 1,
+      "listSlots": 0,
+      "nonListSlots": 1,
+      "sourceLines": 1,
+      "sourceBodyLines": 1,
+      "sourceBulletLines": 0,
+      "replaced": 1,
+      "overflowDropped": 0
+    },
+    {
+      "heading": "EDUCATION & QUALIFICATIONS",
+      "key": "education qualifications",
+      "protected": false,
+      "slots": 2,
+      "listSlots": 0,
+      "nonListSlots": 2,
+      "sourceLines": 0,
+      "sourceBodyLines": 0,
+      "sourceBulletLines": 0,
+      "replaced": 0,
+      "overflowDropped": 0
+    },
+    {
+      "heading": "KEY SKILLS",
+      "key": "key skills",
+      "protected": false,
+      "slots": 9,
+      "listSlots": 9,
+      "nonListSlots": 0,
+      "sourceLines": 5,
+      "sourceBodyLines": 0,
+      "sourceBulletLines": 5,
+      "replaced": 5,
+      "overflowDropped": 0
+    },
+    {
+      "heading": "PROFESSIONAL PROJECTS",
+      "key": "professional projects",
+      "protected": false,
+      "slots": 10,
+      "listSlots": 6,
+      "nonListSlots": 4,
+      "sourceLines": 8,
+      "sourceBodyLines": 2,
+      "sourceBulletLines": 6,
+      "replaced": 8,
+      "overflowDropped": 0
+    },
+    {
+      "heading": "WORK EXPERIENCE",
+      "key": "work experience",
+      "protected": false,
+      "slots": 9,
+      "listSlots": 5,
+      "nonListSlots": 4,
+      "sourceLines": 9,
+      "sourceBodyLines": 4,
+      "sourceBulletLines": 5,
+      "replaced": 9,
+      "overflowDropped": 0
+    },
+    {
+      "heading": "ADDITIONAL INFORMATION",
+      "key": "additional information",
+      "protected": false,
+      "slots": 2,
+      "listSlots": 0,
+      "nonListSlots": 2,
+      "sourceLines": 2,
+      "sourceBodyLines": 0,
+      "sourceBulletLines": 2,
+      "replaced": 0,
+      "overflowDropped": 2
+    },
+    {
+      "heading": "INTERESTS",
+      "key": "interests",
+      "protected": false,
+      "slots": 1,
+      "listSlots": 0,
+      "nonListSlots": 1,
+      "sourceLines": 1,
+      "sourceBodyLines": 1,
+      "sourceBulletLines": 0,
+      "replaced": 1,
+      "overflowDropped": 0
+    }
+  ]
+}

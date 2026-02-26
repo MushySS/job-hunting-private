@@ -48,7 +48,9 @@ function parseMdSections(md) {
     const cleaned = cleanMdLine(raw)
     if (!cleaned) continue
     if (!sections[current]) sections[current] = []
-    sections[current].push(cleaned)
+
+    const isBullet = /^[-*+]\s+/.test(raw) || /^\d+[.)]\s+/.test(raw)
+    sections[current].push({ text: cleaned, isBullet })
   }
 
   return sections
@@ -147,7 +149,7 @@ const structurePath = path.join(outputDir, `resume-structure-${ts}.json`)
 // Build section blocks from original DOCX and replace content *within each section only*.
 // This avoids heading/content style drift caused by cross-section fallback.
 const blocks = []
-let current = { key: '__root__', headingText: '', contentParagraphIndexes: [] }
+let current = { key: '__root__', headingText: '', contentParagraphIndexes: [], listParagraphIndexes: [], nonListParagraphIndexes: [] }
 
 for (let i = 0; i < structure.length; i++) {
   const meta = structure[i]
@@ -157,6 +159,8 @@ for (let i = 0; i < structure.length; i++) {
       key: normalizeHeading(meta.text) || '__root__',
       headingText: meta.text,
       contentParagraphIndexes: [],
+      listParagraphIndexes: [],
+      nonListParagraphIndexes: [],
     }
     continue
   }
@@ -166,7 +170,11 @@ for (let i = 0; i < structure.length; i++) {
   if (!textNodes.length) continue
 
   // Replace only non-empty body paragraphs. Keep blanks/layout spacers untouched.
-  if ((meta.text || '').trim()) current.contentParagraphIndexes.push(i)
+  if ((meta.text || '').trim()) {
+    current.contentParagraphIndexes.push(i)
+    if (meta.hasList) current.listParagraphIndexes.push(i)
+    else current.nonListParagraphIndexes.push(i)
+  }
 }
 blocks.push(current)
 
@@ -183,6 +191,8 @@ fs.writeFileSync(
         key: b.key,
         headingText: b.headingText,
         contentSlots: b.contentParagraphIndexes.length,
+        listSlots: b.listParagraphIndexes.length,
+        nonListSlots: b.nonListParagraphIndexes.length,
       })),
     },
     null,
@@ -204,6 +214,8 @@ for (const block of blocks) {
       key: block.key,
       protected: true,
       slots: block.contentParagraphIndexes.length,
+      listSlots: block.listParagraphIndexes.length,
+      nonListSlots: block.nonListParagraphIndexes.length,
       sourceLines: candidateLines.length,
       replaced: 0,
       overflowDropped: candidateLines.length,
@@ -211,18 +223,35 @@ for (const block of blocks) {
     continue
   }
 
-  const limit = Math.min(block.contentParagraphIndexes.length, candidateLines.length)
+  const bulletLines = candidateLines.filter((x) => x.isBullet).map((x) => x.text)
+  const bodyLines = candidateLines.filter((x) => !x.isBullet).map((x) => x.text)
 
-  for (let j = 0; j < limit; j++) {
-    const pIndex = block.contentParagraphIndexes[j]
+  let replacedInBlock = 0
+
+  const nonListLimit = Math.min(block.nonListParagraphIndexes.length, bodyLines.length)
+  for (let j = 0; j < nonListLimit; j++) {
+    const pIndex = block.nonListParagraphIndexes[j]
     const p = paragraphs[pIndex]
     const textNodes = select('.//w:t', p)
-    const next = candidateLines[j]
+    const next = bodyLines[j]
     if (!textNodes.length || !next) continue
-
     textNodes[0].textContent = next
     for (let t = 1; t < textNodes.length; t++) textNodes[t].textContent = ''
     replaced += 1
+    replacedInBlock += 1
+  }
+
+  const listLimit = Math.min(block.listParagraphIndexes.length, bulletLines.length)
+  for (let j = 0; j < listLimit; j++) {
+    const pIndex = block.listParagraphIndexes[j]
+    const p = paragraphs[pIndex]
+    const textNodes = select('.//w:t', p)
+    const next = bulletLines[j]
+    if (!textNodes.length || !next) continue
+    textNodes[0].textContent = next
+    for (let t = 1; t < textNodes.length; t++) textNodes[t].textContent = ''
+    replaced += 1
+    replacedInBlock += 1
   }
 
   sectionReport.push({
@@ -230,9 +259,13 @@ for (const block of blocks) {
     key: block.key,
     protected: false,
     slots: block.contentParagraphIndexes.length,
+    listSlots: block.listParagraphIndexes.length,
+    nonListSlots: block.nonListParagraphIndexes.length,
     sourceLines: candidateLines.length,
-    replaced: limit,
-    overflowDropped: Math.max(0, candidateLines.length - limit),
+    sourceBodyLines: bodyLines.length,
+    sourceBulletLines: bulletLines.length,
+    replaced: replacedInBlock,
+    overflowDropped: Math.max(0, bodyLines.length - nonListLimit) + Math.max(0, bulletLines.length - listLimit),
   })
 }
 
