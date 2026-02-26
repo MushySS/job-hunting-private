@@ -25,6 +25,56 @@ npm start
 
 Open: `http://localhost:3000`
 
+## Restart Recovery Instructions (for future assistant sessions)
+
+If the assistant restarts and has no memory, use this exact recovery flow:
+
+1. Open this project folder:
+   - `/home/mushy/.openclaw/workspace/job-hunt-portal`
+2. Confirm latest code is present:
+   ```bash
+   git pull
+   ```
+3. Reinstall dependencies:
+   ```bash
+   npm install
+   ```
+4. Load environment variables from local `.env`:
+   ```bash
+   set -a
+   source .env
+   set +a
+   ```
+5. Start app:
+   ```bash
+   npm start
+   ```
+6. Verify health:
+   - `http://localhost:3000/api/health`
+
+### If folder is missing
+
+Re-clone from GitHub:
+
+```bash
+cd /home/mushy/.openclaw/workspace
+git clone https://github.com/MushySS/job-hunting-private.git job-hunt-portal
+cd job-hunt-portal
+npm install
+set -a
+source .env
+set +a
+npm start
+```
+
+### Important persistence notes
+
+- `.env` is git-ignored (API keys are local only).
+- Keep a secure backup of `.env`.
+- Uploaded resumes are in `data/uploads/`.
+- Generated files are in `output/`.
+- Commit + push any important output files you want preserved in GitHub.
+
 ## Enable LLM mode (Agent A + Agent B with tokens)
 
 Set environment variables before starting:
