@@ -92,6 +92,11 @@ ${JSON.stringify(sectionOrder)}
 4) Do NOT add or remove top-level headings
 5) Output ONLY markdown resume content
 6) Do NOT wrap output in code fences
+7) For PROJECT sections, preserve this per-project pattern exactly:
+   - Project Title line (not a bullet)
+   - One short Description line (not a bullet)
+   - Then bullet points
+   Repeat for each project.
 
 JOB AD:
 ${latestJob.source_job_ad}

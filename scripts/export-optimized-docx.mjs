@@ -224,7 +224,17 @@ for (const block of blocks) {
   }
 
   const bulletLines = candidateLines.filter((x) => x.isBullet).map((x) => x.text)
-  const bodyLines = candidateLines.filter((x) => !x.isBullet).map((x) => x.text)
+  let bodyLines = candidateLines.filter((x) => !x.isBullet).map((x) => x.text)
+  let promotedBullets = 0
+
+  // Project sections often require title + description in non-list slots.
+  // If model under-produces non-list lines, promote earliest bullets as plain lines
+  // so descriptions don't disappear.
+  if (/project/.test(block.key) && bodyLines.length < block.nonListParagraphIndexes.length) {
+    const needed = block.nonListParagraphIndexes.length - bodyLines.length
+    promotedBullets = Math.min(needed, bulletLines.length)
+    bodyLines = bodyLines.concat(bulletLines.slice(0, promotedBullets))
+  }
 
   let replacedInBlock = 0
 
@@ -241,12 +251,13 @@ for (const block of blocks) {
     replacedInBlock += 1
   }
 
-  const listLimit = Math.min(block.listParagraphIndexes.length, bulletLines.length)
+  const remainingBullets = bulletLines.slice(promotedBullets)
+  const listLimit = Math.min(block.listParagraphIndexes.length, remainingBullets.length)
   for (let j = 0; j < listLimit; j++) {
     const pIndex = block.listParagraphIndexes[j]
     const p = paragraphs[pIndex]
     const textNodes = select('.//w:t', p)
-    const next = bulletLines[j]
+    const next = remainingBullets[j]
     if (!textNodes.length || !next) continue
     textNodes[0].textContent = next
     for (let t = 1; t < textNodes.length; t++) textNodes[t].textContent = ''
@@ -264,8 +275,9 @@ for (const block of blocks) {
     sourceLines: candidateLines.length,
     sourceBodyLines: bodyLines.length,
     sourceBulletLines: bulletLines.length,
+    promotedBulletsToBody: promotedBullets,
     replaced: replacedInBlock,
-    overflowDropped: Math.max(0, bodyLines.length - nonListLimit) + Math.max(0, bulletLines.length - listLimit),
+    overflowDropped: Math.max(0, bodyLines.length - nonListLimit) + Math.max(0, remainingBullets.length - listLimit),
   })
 }
 
